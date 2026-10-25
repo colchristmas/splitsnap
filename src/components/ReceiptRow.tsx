@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react'
+import { Check, ChevronRight } from 'lucide-react'
 import { Link } from 'react-router'
 import { useCategoriesById } from '../db/categories'
 import { usePeopleById } from '../db/hooks'
@@ -6,18 +6,26 @@ import { formatCents } from '../lib/money'
 import { formatDate } from '../lib/share'
 import { split } from '../lib/split'
 import type { Receipt } from '../lib/types'
-import { Avatar } from './ui'
+import { Avatar, cx } from './ui'
 
-export function ReceiptRow({ receipt }: { receipt: Receipt }) {
+/** A receipt in a list. With `onSelect`, tapping toggles a checkbox instead of opening it. */
+export function ReceiptRow({ receipt, onSelect, selected }: { receipt: Receipt; onSelect?: () => void; selected?: boolean }) {
   const byId = usePeopleById()
   const category = useCategoriesById().get(receipt.categoryId ?? '')
   const total = split(receipt).grandTotalCents
   const shown = receipt.participantIds.slice(0, 4)
-  return (
-    <Link
-      to={`/r/${receipt.id}/${receipt.status === 'final' ? 'split' : 'items'}`}
-      className="flex items-center gap-3 px-4 py-3 hover:bg-stone-50 dark:hover:bg-stone-800/50"
-    >
+  const body = (
+    <>
+      {onSelect && (
+        <span
+          className={cx(
+            'inline-flex size-6 shrink-0 items-center justify-center rounded-full ring-2',
+            selected ? 'bg-teal-700 text-white ring-teal-700' : 'ring-stone-300 dark:ring-stone-600',
+          )}
+        >
+          {selected && <Check size={14} strokeWidth={3} />}
+        </span>
+      )}
       <div className="min-w-0 flex-1">
         <p className="flex items-center gap-2 truncate font-medium">
           {receipt.store || 'Untitled receipt'}
@@ -38,7 +46,23 @@ export function ReceiptRow({ receipt }: { receipt: Receipt }) {
         ))}
       </div>
       <span className="w-20 text-right font-semibold tabular-nums">{formatCents(total)}</span>
-      <ChevronRight size={18} className="text-stone-400" />
+      {!onSelect && <ChevronRight size={18} className="text-stone-400" />}
+    </>
+  )
+  const className = 'flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-stone-50 dark:hover:bg-stone-800/50'
+  return onSelect ? (
+    <button
+      type="button"
+      onClick={onSelect}
+      disabled={receipt.status !== 'final'}
+      aria-pressed={selected}
+      className={cx(className, receipt.status !== 'final' && 'opacity-50')}
+    >
+      {body}
+    </button>
+  ) : (
+    <Link to={`/r/${receipt.id}/${receipt.status === 'final' ? 'split' : 'items'}`} className={className}>
+      {body}
     </Link>
   )
 }

@@ -56,10 +56,11 @@ function header(receipt: Receipt): string {
 
 function personBlock(p: PersonSplit, receipt: Receipt, name: Names, categories: Map<string, Category>): string {
   const payer = name(receipt.payerId)
+  const payerSelf = payer.trim().toLowerCase() === 'me'
   const title =
     p.personId === receipt.payerId
       ? `${name(p.personId)} (paid) ${formatCents(p.totalCents)}`
-      : `${name(p.personId)} owes ${payer} ${formatCents(p.totalCents)}`
+      : `${name(p.personId)} owes ${payerSelf ? 'me' : payer} ${formatCents(p.totalCents)}`
   const lines = groupByCategory(p.items, receipt, categories).flatMap((g) => [
     ...(g.name ? [g.name] : []),
     ...g.items.map((i) => {

@@ -75,7 +75,7 @@ describe('receiptText with categories', () => {
         'Star Market — Oct 18, 2026',
         'Total $12.00 · paid by Me',
         '',
-        'Alex owes Me $7.00',
+        'Alex owes me $7.00',
         'Produce',
         '• Apples $3.00',
         'Dairy & eggs',

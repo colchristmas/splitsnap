@@ -25,7 +25,7 @@ export function TabsLayout() {
             <li key={to} className="flex-1">
               <NavLink
                 to={to}
-                end
+                end={to === '/'}
                 className={({ isActive }) =>
                   cx(
                     'flex flex-col items-center gap-0.5 py-2 text-xs font-medium',

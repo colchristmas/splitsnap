@@ -81,6 +81,8 @@ export interface Receipt {
   imageId?: string
   categoryId?: string
   categoryManual?: boolean
+  /** People whose share of this bill (with me) has been paid back. */
+  settledWith?: string[]
   createdAt: number
   updatedAt: number
 }

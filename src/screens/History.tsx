@@ -1,9 +1,10 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Search, Trash2 } from 'lucide-react'
+import { Layers, Search, Trash2 } from 'lucide-react'
 import { useState } from 'react'
+import { useNavigate } from 'react-router'
 import { PageTitle } from '../components/layouts'
 import { ReceiptRow } from '../components/ReceiptRow'
-import { Card, Empty, cx } from '../components/ui'
+import { Button, Card, Empty, cx } from '../components/ui'
 import { useCategories } from '../db/categories'
 import { usePeopleById } from '../db/hooks'
 import { deleteReceipt } from '../db/receipts'
@@ -12,6 +13,16 @@ import { db } from '../db/schema'
 export function History() {
   const [query, setQuery] = useState('')
   const [categoryId, setCategoryId] = useState<string>()
+  // Select mode: pick saved bills to combine into one total per person.
+  const [selected, setSelected] = useState<Set<string> | null>(null)
+  const navigate = useNavigate()
+  const toggle = (id: string) =>
+    setSelected((s) => {
+      const next = new Set(s)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   const byId = usePeopleById()
   const categories = useCategories()
   const categoryName = (id: string | undefined) => categories.find((c) => c.id === id)?.name.toLowerCase() ?? ''
@@ -36,7 +47,24 @@ export function History() {
 
   return (
     <>
-      <PageTitle>History</PageTitle>
+      <PageTitle
+        action={
+          receipts.some((r) => r.status === 'final') && (
+            <Button variant="ghost" size="sm" onClick={() => setSelected(selected ? null : new Set())}>
+              {selected ? (
+                'Cancel'
+              ) : (
+                <>
+                  <Layers size={16} /> Combine bills
+                </>
+              )}
+            </Button>
+          )
+        }
+      >
+        History
+      </PageTitle>
+      {selected && <p className="-mt-2 mb-3 text-sm text-stone-500">Pick saved bills to combine into one total per person.</p>}
       <label className="mb-3 flex items-center gap-2 rounded-xl bg-white px-3 py-2.5 ring-1 ring-stone-300 focus-within:ring-2 focus-within:ring-teal-600 dark:bg-stone-900 dark:ring-stone-700">
         <Search size={18} className="text-stone-400" />
         <input
@@ -75,21 +103,33 @@ export function History() {
           {shown.map((r) => (
             <div key={r.id} className="flex items-center">
               <div className="min-w-0 flex-1">
-                <ReceiptRow receipt={r} />
+                <ReceiptRow receipt={r} onSelect={selected ? () => toggle(r.id) : undefined} selected={selected?.has(r.id)} />
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (confirm(`Delete “${r.store || 'Untitled receipt'}”? This can't be undone.`)) void deleteReceipt(r.id)
-                }}
-                className="p-3 text-stone-400 hover:text-red-600"
-                aria-label={`Delete ${r.store || 'receipt'}`}
-              >
-                <Trash2 size={18} />
-              </button>
+              {!selected && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm(`Delete “${r.store || 'Untitled receipt'}”? This can't be undone.`)) void deleteReceipt(r.id)
+                  }}
+                  className="p-3 text-stone-400 hover:text-red-600"
+                  aria-label={`Delete ${r.store || 'receipt'}`}
+                >
+                  <Trash2 size={18} />
+                </button>
+              )}
             </div>
           ))}
         </Card>
+      )}
+
+      {selected && selected.size > 0 && (
+        <div className="fixed inset-x-0 px-4" style={{ bottom: 'calc(4.25rem + env(safe-area-inset-bottom))' }}>
+          <div className="mx-auto max-w-lg">
+            <Button variant="primary" size="lg" className="shadow-lg" onClick={() => navigate(`/combine?ids=${[...selected].join(',')}`)}>
+              <Layers size={20} /> Combine {selected.size} {selected.size === 1 ? 'bill' : 'bills'}
+            </Button>
+          </div>
+        </div>
       )}
     </>
   )
