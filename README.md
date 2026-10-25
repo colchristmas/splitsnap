@@ -34,6 +34,8 @@ npm run dev
 
 Open **http://localhost:5173**.
 
+**To close the app, press Ctrl+C in the terminal.** Closing the browser tab leaves the server running. Ctrl+Z only *pauses* it, and a paused server keeps its port. If you forget, `npm run dev` stops any old SplitSnap server before starting, so the app always uses port 5173. `npm run stop` frees the ports at any time.
+
 The first start also runs `npm run setup:ocr`. That downloads the OCR models (~37 MB) into `public/models/` and copies the ONNX Runtime files into `public/ort/`. The models come from PaddlePaddle's server in Beijing, so the download can be slow, and the script retries if the connection drops. Later starts skip files that are already there.
 
 ### 4. Start on your phone (same Wi-Fi)
@@ -68,6 +70,7 @@ No receipt handy? **Enter items by hand** on the Home screen works the same way.
 
 | Command | What it does |
 | --- | --- |
+| `npm run stop` | Stop every SplitSnap server (including paused ones) and free their ports |
 | `npm test` | Run the unit tests (split engine, receipt parser, share text) |
 | `npm run build` | Type-check and build the production site into `dist/` |
 | `npm run preview` | Serve the production build at http://localhost:4173 (with the service worker) |
@@ -79,6 +82,7 @@ No receipt handy? **Enter items by hand** on the Home screen works the same way.
 - **"Couldn't download the scanner"**: the model download failed. Run `npm run setup:ocr` again; it resumes where it stopped.
 - **Scanning is very slow, or never starts**: open the browser console and check that `crossOriginIsolated` is `true`. If it's `false`, the page isn't getting the COOP/COEP headers. Use `npm run dev`, `npm run dev:phone` or `npm run preview`, not a plain file server.
 - **The phone can't reach the dev server**: make sure the phone and computer are on the same Wi-Fi, and that your firewall allows incoming connections to Node.
+- **"Port 5173 is in use"**: a program other than SplitSnap is using it. SplitSnap's own old servers are stopped automatically. Run `lsof -i :5173` to see what's holding the port.
 - **Seeing an old version after an update**: the service worker updates itself on the next load. Reload once more, or clear the site's data.
 
 ---

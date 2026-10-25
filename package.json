@@ -12,9 +12,11 @@
     "test:watch": "vitest",
     "dev:phone": "vite --host --mode phone",
     "setup:ocr": "node scripts/fetch-ocr-assets.mjs",
-    "predev": "npm run setup:ocr",
-    "predev:phone": "npm run setup:ocr",
-    "prebuild": "npm run setup:ocr"
+    "predev": "node scripts/stop-servers.mjs && npm run setup:ocr",
+    "predev:phone": "node scripts/stop-servers.mjs && npm run setup:ocr",
+    "prebuild": "npm run setup:ocr",
+    "stop": "node scripts/stop-servers.mjs --verbose",
+    "prepreview": "node scripts/stop-servers.mjs"
   },
   "dependencies": {
     "@paddleocr/paddleocr-js": "^0.4.2",
