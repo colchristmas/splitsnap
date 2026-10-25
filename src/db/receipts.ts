@@ -1,5 +1,6 @@
 import type { ParsedReceipt } from '../lib/receipt/parse'
 import { DEFAULT_SPLIT_MODE, type Receipt } from '../lib/types'
+import { recategorize } from './categories'
 import { ensureSelf } from './people'
 import { db, newId } from './schema'
 
@@ -53,7 +54,9 @@ export async function applyParsed(id: string, parsed: ParsedReceipt) {
     r.printedTotalCents = parsed.printedTotalCents
     r.items = parsed.items.map((i) => ({ ...i, id: newId(), shares: {} }))
     r.charges = parsed.charges.map((c) => ({ ...c, id: newId(), splitMode: DEFAULT_SPLIT_MODE[c.kind] }))
+    r.categoryManual = false
   })
+  await recategorize(id)
 }
 
 export async function deleteReceipt(id: string) {

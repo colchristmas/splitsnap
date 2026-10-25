@@ -1,5 +1,6 @@
 import { ChevronRight } from 'lucide-react'
 import { Link } from 'react-router'
+import { useCategoriesById } from '../db/categories'
 import { usePeopleById } from '../db/hooks'
 import { formatCents } from '../lib/money'
 import { formatDate } from '../lib/share'
@@ -9,6 +10,7 @@ import { Avatar } from './ui'
 
 export function ReceiptRow({ receipt }: { receipt: Receipt }) {
   const byId = usePeopleById()
+  const category = useCategoriesById().get(receipt.categoryId ?? '')
   const total = split(receipt).grandTotalCents
   const shown = receipt.participantIds.slice(0, 4)
   return (
@@ -25,7 +27,10 @@ export function ReceiptRow({ receipt }: { receipt: Receipt }) {
             </span>
           )}
         </p>
-        <p className="text-sm text-stone-500">{formatDate(receipt.date)}</p>
+        <p className="truncate text-sm text-stone-500">
+          {formatDate(receipt.date)}
+          {category && ` · ${category.name}`}
+        </p>
       </div>
       <div className="flex -space-x-1.5">
         {shown.map((id) => (

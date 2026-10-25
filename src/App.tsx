@@ -7,6 +7,7 @@ import { Items } from './screens/Items'
 import { People } from './screens/People'
 import { Scan } from './screens/Scan'
 import { Settings } from './screens/Settings'
+import { Spending } from './screens/Spending'
 import { Summary } from './screens/Summary'
 
 export const router = createBrowserRouter([
@@ -15,6 +16,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Home /> },
       { path: 'history', element: <History /> },
+      { path: 'spending', element: <Spending /> },
       { path: 'people', element: <People /> },
       { path: 'settings', element: <Settings /> },
     ],

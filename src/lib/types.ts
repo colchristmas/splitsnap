@@ -37,6 +37,18 @@ export interface Item {
   shares: Record<string, number>
   /** UI mode for quantity items: hand out units instead of splitting equally. */
   byUnits?: boolean
+  categoryId?: string
+  /** Set when the user picked the category, so auto-categorizing leaves it alone. */
+  categoryManual?: boolean
+}
+
+export type CategoryKind = 'receipt' | 'item'
+
+export interface Category {
+  id: string
+  kind: CategoryKind
+  name: string
+  order: number
 }
 
 export type ChargeKind = 'tax' | 'tip' | 'fee' | 'discount'
@@ -63,6 +75,8 @@ export interface Receipt {
   charges: Charge[]
   printedTotalCents?: number
   imageId?: string
+  categoryId?: string
+  categoryManual?: boolean
   createdAt: number
   updatedAt: number
 }

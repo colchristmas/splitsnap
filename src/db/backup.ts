@@ -1,5 +1,6 @@
-import type { Group, Person, Receipt } from '../lib/types'
-import { db } from './schema'
+import { DEFAULT_CATEGORIES } from '../lib/categories'
+import type { Category, Group, Person, Receipt } from '../lib/types'
+import { db, type CategoryChoice } from './schema'
 
 interface BackupFile {
   app: 'splitsnap'
@@ -8,6 +9,9 @@ interface BackupFile {
   people: Person[]
   groups: Group[]
   receipts: Receipt[]
+  /** Added after the first release; older backups don't have them. */
+  categories?: Category[]
+  categoryMemory?: CategoryChoice[]
   /** Receipt photos as data: URLs; left out when exporting without photos. */
   images?: { id: string; dataUrl: string; createdAt: number }[]
 }
@@ -22,8 +26,23 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 }
 
 export async function exportBackup(includePhotos: boolean): Promise<Blob> {
-  const [people, groups, receipts] = await Promise.all([db.people.toArray(), db.groups.toArray(), db.receipts.toArray()])
-  const file: BackupFile = { app: 'splitsnap', version: 1, exportedAt: new Date().toISOString(), people, groups, receipts }
+  const [people, groups, receipts, categories, categoryMemory] = await Promise.all([
+    db.people.toArray(),
+    db.groups.toArray(),
+    db.receipts.toArray(),
+    db.categories.toArray(),
+    db.categoryMemory.toArray(),
+  ])
+  const file: BackupFile = {
+    app: 'splitsnap',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    people,
+    groups,
+    receipts,
+    categories,
+    categoryMemory,
+  }
   if (includePhotos) {
     const images = await db.images.toArray()
     file.images = await Promise.all(
@@ -55,8 +74,15 @@ export async function importBackup(text: string, mode: 'merge' | 'replace') {
     (file.images ?? []).map(async (i) => ({ id: i.id, blob: await (await fetch(i.dataUrl)).blob(), createdAt: i.createdAt })),
   )
 
-  await db.transaction('rw', [db.people, db.groups, db.receipts, db.images], async () => {
-    if (mode === 'replace') await Promise.all([db.people.clear(), db.groups.clear(), db.receipts.clear(), db.images.clear()])
+  const tables = [db.people, db.groups, db.receipts, db.images, db.categories, db.categoryMemory]
+  await db.transaction('rw', tables, async () => {
+    if (mode === 'replace') {
+      await Promise.all(tables.map((t) => t.clear()))
+      await db.categories.bulkAdd(file.categories?.length ? file.categories : DEFAULT_CATEGORIES)
+    } else if (file.categories) {
+      await db.categories.bulkPut(file.categories)
+    }
+    if (file.categoryMemory) await db.categoryMemory.bulkPut(file.categoryMemory)
 
     let people = file.people
     let groups = file.groups ?? []
@@ -85,8 +111,11 @@ export async function importBackup(text: string, mode: 'merge' | 'replace') {
   })
 }
 
+/** Deletes people, groups, receipts and photos, and puts categories back to the starter list. */
 export async function clearAllData() {
-  await db.transaction('rw', [db.people, db.groups, db.receipts, db.images], () =>
-    Promise.all([db.people.clear(), db.groups.clear(), db.receipts.clear(), db.images.clear()]),
-  )
+  const tables = [db.people, db.groups, db.receipts, db.images, db.categories, db.categoryMemory]
+  await db.transaction('rw', tables, async () => {
+    await Promise.all(tables.map((t) => t.clear()))
+    await db.categories.bulkAdd(DEFAULT_CATEGORIES)
+  })
 }
