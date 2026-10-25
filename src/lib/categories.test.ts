@@ -41,6 +41,7 @@ describe('guessItemCategory', () => {
     expect(guess('Bnls Chkn Brst')).toBe('i:meat')
     expect(guess('Org Bnna')).toBe('i:produce')
     expect(guess('Ppr Twl 6pk')).toBe('i:household')
+    expect(guess('Sprklngice Lemon')).toBe('i:drinks') // not Produce
   })
 
   it('treats restaurant food as meals, except drinks and desserts', () => {

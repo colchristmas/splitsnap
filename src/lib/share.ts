@@ -54,13 +54,25 @@ function header(receipt: Receipt): string {
   return [receipt.store || 'Receipt', formatDate(receipt.date)].filter(Boolean).join(' — ')
 }
 
-function personBlock(p: PersonSplit, receipt: Receipt, name: Names, categories: Map<string, Category>): string {
+/**
+ * One person's lines. "neutral" just states their share ("Paul: $3.69");
+ * "owes" phrases it as a request ("Paul owes me $3.69").
+ */
+function personBlock(
+  p: PersonSplit,
+  receipt: Receipt,
+  name: Names,
+  categories: Map<string, Category>,
+  wording: 'neutral' | 'owes',
+): string {
   const payer = name(receipt.payerId)
   const payerSelf = payer.trim().toLowerCase() === 'me'
   const title =
-    p.personId === receipt.payerId
-      ? `${name(p.personId)} (paid) ${formatCents(p.totalCents)}`
-      : `${name(p.personId)} owes ${payerSelf ? 'me' : payer} ${formatCents(p.totalCents)}`
+    wording === 'neutral'
+      ? `${name(p.personId)}: ${formatCents(p.totalCents)}`
+      : p.personId === receipt.payerId
+        ? `${name(p.personId)} (paid) ${formatCents(p.totalCents)}`
+        : `${name(p.personId)} owes ${payerSelf ? 'me' : payer} ${formatCents(p.totalCents)}`
   const lines = groupByCategory(p.items, receipt, categories).flatMap((g) => [
     ...(g.name ? [g.name] : []),
     ...g.items.map((i) => {
@@ -73,7 +85,7 @@ function personBlock(p: PersonSplit, receipt: Receipt, name: Names, categories: 
   return [title, ...lines].join('\n')
 }
 
-/** The whole split as plain text, payer last. */
+/** The whole split as plain text: each person's share, stated neutrally. */
 export function receiptText(
   receipt: Receipt,
   result: SplitResult,
@@ -84,14 +96,14 @@ export function receiptText(
     .filter((p) => p.totalCents !== 0 || p.items.length > 0)
     .sort((a, b) => Number(a.personId === receipt.payerId) - Number(b.personId === receipt.payerId))
   return [
-    `${header(receipt)}\nTotal ${formatCents(result.grandTotalCents)} · paid by ${name(receipt.payerId)}`,
-    ...people.map((p) => personBlock(p, receipt, name, categories)),
+    `${header(receipt)}\nTotal ${formatCents(result.grandTotalCents)}`,
+    ...people.map((p) => personBlock(p, receipt, name, categories, 'neutral')),
   ].join('\n\n')
 }
 
-/** One person's share as plain text. */
+/** One person's share as plain text, phrased as what they owe the payer. */
 export function personText(receipt: Receipt, p: PersonSplit, name: Names, categories: Map<string, Category> = new Map()): string {
-  return `${header(receipt)}\n\n${personBlock(p, receipt, name, categories)}`
+  return `${header(receipt)}\n\n${personBlock(p, receipt, name, categories, 'owes')}`
 }
 
 /** Opens the share sheet when available, otherwise copies to the clipboard. */
