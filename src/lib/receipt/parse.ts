@@ -44,11 +44,13 @@ interface Box {
 const PRICE_AT_END = /(-?\$?\s?\d{1,4}(?:,\d{3})*[.,]\d{2})\s*(-)?\s*([A-Z*]{1,2})?$/i
 // "2 @ 3.49", "2 X 3.49", "2 @ $3.49 ea"
 const QTY_AT = /(\d{1,3})\s*(?:@|[xX×])\s*\$?(\d{1,4}[.,]\d{2})(?:\s*(?:EA|EACH|\/EA))?/i
+// App receipts put the quantity under the item: "Qty 3 · $2.16 each".
+const QTY_LINE = /^\W*(?:QTY|QUANTITY)\s*:?\s*(\d{1,3})\b/i
 const UNIT_WORDS = /^(PK|PACK|CT|COUNT|OZ|FL|LB|LBS|G|KG|ML|L|GAL|IN|PC|PCS|ROLL|ROLLS)\b/i
 
 // Keywords end at a non-letter so OCR'd "Tip20%" or "Tax7%" still match.
 const SUBTOTAL = /\bSUB\s*-?\s*TOTAL(?![A-Z])/i
-const TAX = /\b(TAX|VAT|GST|HST|PST)(?![A-Z])/i
+const TAX = /\b(TAX(?:ES)?|VAT|GST|HST|PST)(?![A-Z])/i
 const TAX_INCLUDED = /\b(INCL\.?|INCLUDING|WITH|W\/)\s*(SALES\s+)?TAX\b/i
 const TIP = /\b(TIP|GRATUITY)(?![A-Z])/i
 const TOTAL = /\b(GRAND\s+)?TOTAL(?![A-Z])|\bAMOUNT\s+DUE\b|\bBALANCE\s+DUE\b/i
@@ -87,6 +89,12 @@ export function parseReceipt(lines: OcrLine[]): ParsedReceipt {
       const prev = out.items.at(-1)
       if (lastWasItem && prev && prev.quantity === 1 && prev.totalCents === q * unitCents) prev.quantity = q
       else pendingQty = { qty: q, unitCents }
+      continue
+    }
+    const qtyLine = QTY_LINE.exec(row)
+    if (qtyLine && sawPrice) {
+      const prev = out.items.at(-1)
+      if (lastWasItem && prev) prev.quantity = Number(qtyLine[1])
       continue
     }
 
@@ -233,6 +241,7 @@ function tidy(text: string): string {
   const s = text
     .replace(/[$:*#]+/g, ' ')
     .replace(/([A-Za-z]{3,})(\d)/g, '$1 $2') // OCR often drops the space in "Tip20%"
+    .replace(/\b(\d+\s*)Ib\b/g, '$1lb') // and reads "lb" as "Ib"
     .replace(/\s+/g, ' ')
     .replace(/^[\s\-.,]+|[\s\-.,]+$/g, '')
   if (/[a-z]/.test(s)) return s
