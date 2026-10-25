@@ -2,6 +2,7 @@ import { ArrowLeft, Check, Share2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { BalanceText } from '../components/BalanceText'
+import { ShareTextBox, useShareDraft } from '../components/ShareTextBox'
 import { Avatar, Button, Card, Empty, SectionTitle } from '../components/ui'
 import { markSettled, useBalances } from '../db/balances'
 import { useCategoriesById } from '../db/categories'
@@ -24,9 +25,11 @@ export function Combine() {
   const combined = meId ? combine(bills, meId) : []
   const byId = new Map(bills.map((r) => [r.id, r]))
 
-  // What gets shared is one neutral, itemized list per person across all the bills.
+  // What gets shared is one neutral, itemized list per person across all the
+  // bills, editable at the bottom of the page (not saved: the selection is ad hoc).
+  const draft = useShareDraft(combinedReceiptsText(bills, name, categories, meId))
   const share = async () => {
-    const outcome = await shareText(combinedReceiptsText(bills, name, categories, meId)).catch(() => 'failed' as const)
+    const outcome = await shareText(draft.text).catch(() => 'failed' as const)
     setToast(outcome === 'copied' ? 'Copied to clipboard' : outcome === 'failed' ? "Couldn't share or copy" : undefined)
     setTimeout(() => setToast(undefined), 2500)
   }
@@ -93,6 +96,7 @@ export function Combine() {
 
       {bills.length > 0 && (
         <>
+          <ShareTextBox draft={draft} hint="Edit anything here before sharing. Share sends this message." />
           <SectionTitle>Bills included</SectionTitle>
           <ul className="grid gap-1 px-1 text-sm text-stone-600 dark:text-stone-400">
             {bills.map((r) => (

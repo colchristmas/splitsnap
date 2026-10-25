@@ -107,7 +107,10 @@ No receipt handy? **Enter items by hand** on the Home screen works the same way.
 - **Combine bills.** In History, tap **Combine bills** and pick several saved bills.
   - **Share** sends one itemized list per person covering all of them, with each person's total and no "owes" or "paid" wording.
   - The screen also shows each person's balance with you, so you can mark them all settled.
-- **Sharing.** Share as text through the phone's share sheet, or copy it to the clipboard. **Share all** lists each person's share neutrally ("Paul: $3.69"). Sharing one person's total says what they owe you.
+- **Sharing.** Share as text through the phone's share sheet, or copy it to the clipboard.
+  - **Share all** lists each person's share neutrally ("Paul: $3.69"). Sharing one person's total says what they owe you.
+  - The message appears at the bottom of the split screen (and of Combine bills), where you can edit it before sharing.
+  - Edits are saved with the receipt. **Reset** brings back the generated text, and you'll see a note if the split changed after you edited.
 - **Categories.**
   - Receipts get a type (Groceries, Dining out, Takeout & delivery…) and items get one too (Produce, Dairy & eggs, Alcohol, Meals…).
   - They're picked automatically from keyword rules. When you change one, SplitSnap remembers it for that store or item next time.
