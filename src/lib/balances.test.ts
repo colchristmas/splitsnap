@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { balances, billShares, combine, combinedText, dateRange, owesLine } from './balances'
+import { balances, balancesText, billShares, combine, owesLine } from './balances'
+import { dateRange } from './share'
 import type { Receipt } from './types'
 
 const bill = (id: string, payerId: string, date: string, shares: Record<string, number>, extra: Partial<Receipt> = {}): Receipt => ({
@@ -77,7 +78,7 @@ describe('combine', () => {
 
   it('writes a shareable summary', () => {
     const names: Record<string, string> = { me: 'Me', seb: 'Sebastian', paul: 'Paul' }
-    expect(combinedText(receipts, combine(receipts, 'me'), (id) => names[id], 'me')).toBe(
+    expect(balancesText(receipts, combine(receipts, 'me'), (id) => names[id], 'me')).toBe(
       [
         'Combined: 3 bills · Oct 17–24',
         '',

@@ -6,7 +6,7 @@ import { Avatar, Button, Card, Empty, SectionTitle, cx } from '../components/ui'
 import { markUnsettled, settleWithPerson, useBalances } from '../db/balances'
 import { usePeopleById } from '../db/hooks'
 import { archivePerson, renamePerson } from '../db/people'
-import { combine, combinedText } from '../lib/balances'
+import { balancesText, combine } from '../lib/balances'
 import { formatCents } from '../lib/money'
 import { formatDate, shareText } from '../lib/share'
 
@@ -38,7 +38,7 @@ export function PersonPage() {
   const share = async () => {
     if (!meId) return
     const mine = combine(openReceipts, meId).filter((p) => p.personId === id)
-    const outcome = await shareText(combinedText(openReceipts, mine, name, meId)).catch(() => 'failed' as const)
+    const outcome = await shareText(balancesText(openReceipts, mine, name, meId)).catch(() => 'failed' as const)
     setToast(outcome === 'copied' ? 'Copied to clipboard' : outcome === 'failed' ? "Couldn't share or copy" : undefined)
     setTimeout(() => setToast(undefined), 2500)
   }
