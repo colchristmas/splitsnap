@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_CATEGORIES } from './categories'
-import { personText, receiptText, shareLabel } from './share'
+import { combinedReceiptsText, personText, receiptText, shareLabel } from './share'
 import { split } from './split'
 import type { Receipt } from './types'
 
@@ -104,6 +104,62 @@ describe('receiptText with categories', () => {
         'Me: $5.00',
         'Dairy & eggs',
         '• Cheese $5.00',
+      ].join('\n'),
+    )
+  })
+})
+
+describe('combinedReceiptsText', () => {
+  it('lists each person\'s items from all bills together, with fees added up', () => {
+    const item = (id: string, name: string, cents: number, shares: Record<string, number>, categoryId: string) => ({
+      id,
+      name,
+      quantity: 1,
+      totalCents: cents,
+      discountCents: 0,
+      shares,
+      categoryId,
+    })
+    const bill = (id: string, store: string, date: string, payerId: string, items: Receipt['items']): Receipt => ({
+      id,
+      store,
+      date,
+      status: 'final',
+      payerId,
+      participantIds: ['me', 'seb'],
+      items,
+      charges: [{ id: `${id}-bag`, kind: 'fee', label: 'Bag fee', amountCents: 10, splitMode: 'even' }],
+      createdAt: 0,
+      updatedAt: 0,
+    })
+    const receipts = [
+      bill('a', 'Stop and Shop', '2026-10-15', 'me', [
+        item('a1', 'Whole Milk', 398, { me: 1, seb: 1 }, 'i:dairy'),
+        item('a2', 'Brioche', 428, { seb: 1 }, 'i:bakery'),
+      ]),
+      // Sebastian paid this one; the text doesn't say who paid.
+      bill('b', 'Star Market', '2026-10-24', 'seb', [item('b1', 'Greek Yogurt', 600, { me: 1, seb: 1 }, 'i:dairy')]),
+    ]
+    const categories = new Map(DEFAULT_CATEGORIES.map((c) => [c.id, c]))
+    const names: Record<string, string> = { me: 'Me', seb: 'Sebastian' }
+    expect(combinedReceiptsText(receipts, (id) => names[id], categories, 'me')).toBe(
+      [
+        'Combined: 2 bills · Oct 15–24',
+        'Total $14.46',
+        '',
+        'Sebastian: $9.37',
+        'Dairy & eggs',
+        '• Whole Milk ½ $1.99',
+        '• Greek Yogurt ½ $3.00',
+        'Bakery',
+        '• Brioche $4.28',
+        '• Bag fee $0.10',
+        '',
+        'Me: $5.09',
+        'Dairy & eggs',
+        '• Whole Milk ½ $1.99',
+        '• Greek Yogurt ½ $3.00',
+        '• Bag fee $0.10',
       ].join('\n'),
     )
   })

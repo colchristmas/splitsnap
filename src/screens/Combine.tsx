@@ -4,16 +4,18 @@ import { Link, useSearchParams } from 'react-router'
 import { BalanceText } from '../components/BalanceText'
 import { Avatar, Button, Card, Empty, SectionTitle } from '../components/ui'
 import { markSettled, useBalances } from '../db/balances'
+import { useCategoriesById } from '../db/categories'
 import { usePeopleById } from '../db/hooks'
-import { combine, combinedText, dateRange } from '../lib/balances'
+import { combine } from '../lib/balances'
 import { formatCents } from '../lib/money'
-import { formatDate, shareText } from '../lib/share'
+import { combinedReceiptsText, dateRange, formatDate, shareText } from '../lib/share'
 
 /** Several bills combined into one total per person, to share and settle in one go. */
 export function Combine() {
   const [params] = useSearchParams()
   const ids = (params.get('ids') ?? '').split(',').filter(Boolean)
   const people = usePeopleById()
+  const categories = useCategoriesById()
   const { meId, receipts } = useBalances()
   const [toast, setToast] = useState<string>()
   const name = (id: string) => people.get(id)?.name ?? 'Someone'
@@ -22,9 +24,9 @@ export function Combine() {
   const combined = meId ? combine(bills, meId) : []
   const byId = new Map(bills.map((r) => [r.id, r]))
 
+  // What gets shared is one neutral, itemized list per person across all the bills.
   const share = async () => {
-    if (!meId) return
-    const outcome = await shareText(combinedText(bills, combined, name, meId)).catch(() => 'failed' as const)
+    const outcome = await shareText(combinedReceiptsText(bills, name, categories, meId)).catch(() => 'failed' as const)
     setToast(outcome === 'copied' ? 'Copied to clipboard' : outcome === 'failed' ? "Couldn't share or copy" : undefined)
     setTimeout(() => setToast(undefined), 2500)
   }

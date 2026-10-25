@@ -1,5 +1,5 @@
 import { formatCents } from './money'
-import type { ItemShare, PersonSplit, SplitResult } from './split'
+import { split, type ItemShare, type PersonSplit, type SplitResult } from './split'
 import { byCategoryOrder } from './categories'
 import type { Category, Receipt } from './types'
 
@@ -25,6 +25,19 @@ export function formatDate(iso: string): string {
 
 type Names = (id: string) => string
 
+/** "Oct 17–24", "Sep 28 – Oct 24", "Oct 17, 2026"… */
+export function dateRange(dates: string[]): string {
+  const sorted = [...dates].sort()
+  if (sorted.length === 0) return ''
+  const [first, last] = [sorted[0], sorted.at(-1)!]
+  if (first === last) return formatDate(first)
+  const [y1, m1] = first.split('-')
+  const [y2, m2] = last.split('-')
+  const short = (iso: string) => formatDate(iso).replace(/, \d{4}$/, '')
+  if (y1 === y2 && m1 === m2) return `${short(first)}–${Number(last.split('-')[2])}`
+  return y1 === y2 ? `${short(first)} – ${short(last)}` : `${formatDate(first)} – ${formatDate(last)}`
+}
+
 export interface CategoryGroup {
   /** Empty when the receipt has no item categories at all (no headings needed). */
   name: string
@@ -33,7 +46,11 @@ export interface CategoryGroup {
 }
 
 /** Groups a person's items by item category, in category-list order. */
-export function groupByCategory(items: ItemShare[], receipt: Receipt, categories: Map<string, Category>): CategoryGroup[] {
+export function groupByCategory(
+  items: ItemShare[],
+  receipt: Pick<Receipt, 'items'>,
+  categories: Map<string, Category>,
+): CategoryGroup[] {
   const categoryOf = new Map(receipt.items.map((i) => [i.id, i.categoryId]))
   if (!receipt.items.some((i) => i.categoryId && categories.has(i.categoryId))) {
     return items.length ? [{ name: '', items, cents: items.reduce((a, i) => a + i.cents, 0) }] : []
@@ -73,16 +90,26 @@ function personBlock(
       : p.personId === receipt.payerId
         ? `${name(p.personId)} (paid) ${formatCents(p.totalCents)}`
         : `${name(p.personId)} owes ${payerSelf ? 'me' : payer} ${formatCents(p.totalCents)}`
-  const lines = groupByCategory(p.items, receipt, categories).flatMap((g) => [
+  const charges = p.charges.filter((c) => c.cents !== 0).map((c): [string, number] => [c.label, c.cents])
+  return [title, ...itemLines(p.items, receipt, categories, charges)].join('\n')
+}
+
+/** Item lines under category headings, then one line of fees and tax. */
+function itemLines(
+  items: ItemShare[],
+  receipt: Pick<Receipt, 'items'>,
+  categories: Map<string, Category>,
+  charges: [label: string, cents: number][],
+): string[] {
+  const lines = groupByCategory(items, receipt, categories).flatMap((g) => [
     ...(g.name ? [g.name] : []),
     ...g.items.map((i) => {
       const frac = shareLabel(i)
       return `• ${i.name}${frac ? ` ${frac}` : ''} ${formatCents(i.cents)}`
     }),
   ])
-  const charges = p.charges.filter((c) => c.cents !== 0)
-  if (charges.length) lines.push(`• ${charges.map((c) => `${c.label} ${formatCents(c.cents)}`).join(' · ')}`)
-  return [title, ...lines].join('\n')
+  if (charges.length) lines.push(`• ${charges.map(([label, cents]) => `${label} ${formatCents(cents)}`).join(' · ')}`)
+  return lines
 }
 
 /** The whole split as plain text: each person's share, stated neutrally. */
@@ -98,6 +125,47 @@ export function receiptText(
   return [
     `${header(receipt)}\nTotal ${formatCents(result.grandTotalCents)}`,
     ...people.map((p) => personBlock(p, receipt, name, categories, 'neutral')),
+  ].join('\n\n')
+}
+
+/**
+ * Several bills as one itemized list per person: everyone's items from all the
+ * bills under shared category headings, with fees and tax added up by name.
+ * Neutral wording like receiptText; `selfId` goes last.
+ */
+export function combinedReceiptsText(
+  receipts: Receipt[],
+  name: Names,
+  categories: Map<string, Category> = new Map(),
+  selfId?: string,
+): string {
+  type Person = { items: ItemShare[]; charges: Map<string, number>; cents: number }
+  const people = new Map<string, Person>()
+  let total = 0
+  // Oldest bill first, so people appear in a predictable order.
+  for (const r of [...receipts].sort((a, b) => a.date.localeCompare(b.date))) {
+    const result = split(r)
+    total += result.grandTotalCents
+    for (const p of result.people) {
+      if (p.items.length === 0 && p.totalCents === 0) continue
+      const acc: Person = people.get(p.personId) ?? { items: [], charges: new Map(), cents: 0 }
+      acc.items.push(...p.items)
+      for (const c of p.charges) acc.charges.set(c.label, (acc.charges.get(c.label) ?? 0) + c.cents)
+      acc.cents += p.totalCents
+      people.set(p.personId, acc)
+    }
+  }
+  // Item ids are unique across bills, so one merged list maps every item to its category.
+  const allItems = { items: receipts.flatMap((r) => r.items) }
+  const order = [...people.keys()].sort((a, b) => Number(a === selfId) - Number(b === selfId))
+  const header = `Combined: ${receipts.length} ${receipts.length === 1 ? 'bill' : 'bills'} · ${dateRange(receipts.map((r) => r.date))}`
+  return [
+    `${header}\nTotal ${formatCents(total)}`,
+    ...order.map((id) => {
+      const p = people.get(id)!
+      const charges = [...p.charges].filter(([, cents]) => cents !== 0)
+      return [`${name(id)}: ${formatCents(p.cents)}`, ...itemLines(p.items, allItems, categories, charges)].join('\n')
+    }),
   ].join('\n\n')
 }
 
