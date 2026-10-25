@@ -2,6 +2,7 @@ import { Check, Share2, TriangleAlert } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { ActionBar, useReceiptContext } from '../components/layouts'
+import { ShareTextBox, useShareDraft } from '../components/ShareTextBox'
 import { Avatar, Banner, Button, Card } from '../components/ui'
 import { useCategoriesById } from '../db/categories'
 import { usePeopleById } from '../db/hooks'
@@ -18,6 +19,13 @@ export function Summary() {
   const [toast, setToast] = useState<string>()
   const result = useMemo(() => split(receipt), [receipt])
   const name = (id: string) => byId.get(id)?.name ?? 'Someone'
+  // Share all sends this message; the user can edit it at the bottom of the page.
+  const draft = useShareDraft(receiptText(receipt, result, name, categories), receipt.shareText, (shareText) =>
+    void updateReceipt(receipt.id, (r) => {
+      if (shareText) r.shareText = shareText
+      else delete r.shareText
+    }),
+  )
 
   const share = async (text: string) => {
     const outcome = await shareText(text).catch(() => 'failed' as const)
@@ -85,6 +93,8 @@ export function Summary() {
         ))}
       </div>
 
+      <ShareTextBox draft={draft} hint="Edit anything here before sharing. Share all sends this message, and your changes are saved with the receipt." />
+
       {toast && (
         <div className="fixed inset-x-0 bottom-28 flex justify-center" role="status">
           <span className="rounded-full bg-stone-900 px-4 py-2 text-sm text-white shadow-lg dark:bg-stone-100 dark:text-stone-900">
@@ -94,7 +104,7 @@ export function Summary() {
       )}
 
       <ActionBar>
-        <Button className="flex-1" onClick={() => void share(receiptText(receipt, result, name, categories))}>
+        <Button className="flex-1" onClick={() => void share(draft.text)}>
           <Share2 size={18} /> Share all
         </Button>
         <Button

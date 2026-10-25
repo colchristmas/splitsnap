@@ -83,8 +83,16 @@ export interface Receipt {
   categoryManual?: boolean
   /** People whose share of this bill (with me) has been paid back. */
   settledWith?: string[]
+  /** The Share all message if the user edited it, with the generated text it started from. */
+  shareText?: SavedShareText
   createdAt: number
   updatedAt: number
+}
+
+export interface SavedShareText {
+  text: string
+  /** The generated text when editing began; if the split changes, the edit may be out of date. */
+  base: string
 }
 
 export interface StoredImage {
