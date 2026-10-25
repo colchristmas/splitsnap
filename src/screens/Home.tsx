@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Camera, ImageUp, PencilLine } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { Camera, ClipboardPaste, ImageUp, PencilLine } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { ReceiptRow } from '../components/ReceiptRow'
 import { Banner, Button, Card, SectionTitle } from '../components/ui'
@@ -16,18 +16,49 @@ export function Home() {
   const [error, setError] = useState<string>()
   const recent = useLiveQuery(() => db.receipts.orderBy('updatedAt').reverse().limit(5).toArray(), []) ?? []
 
-  const onFile = async (file: File | undefined) => {
-    if (!file) return
+  const onImage = async (image: Blob | undefined) => {
+    if (!image || busy) return
     setBusy(true)
     setError(undefined)
     try {
-      const id = await createReceipt(await prepareImage(file))
+      const id = await createReceipt(await prepareImage(image))
       navigate(`/r/${id}/scan`)
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't open that photo.")
+      setError(e instanceof Error ? e.message : "Couldn't open that image.")
       setBusy(false)
     }
   }
+
+  // ⌘V / Ctrl+V anywhere on this screen pastes a copied screenshot.
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const file = [...(e.clipboardData?.files ?? [])].find((f) => f.type.startsWith('image/'))
+      if (!file) return
+      e.preventDefault()
+      void onImage(file)
+    }
+    document.addEventListener('paste', onPaste)
+    return () => document.removeEventListener('paste', onPaste)
+  })
+
+  // Phones have no paste shortcut, so the button reads the clipboard directly.
+  // iOS Safari shows its own "Paste" bubble to confirm.
+  const pasteFromClipboard = async () => {
+    setError(undefined)
+    try {
+      for (const item of await navigator.clipboard.read()) {
+        const type = item.types.find((t) => t.startsWith('image/'))
+        if (type) return void (await onImage(await item.getType(type)))
+      }
+      setError('No image on the clipboard. Copy a screenshot first, then try again.')
+    } catch {
+      setError("Couldn't read the clipboard. Allow access when asked, or save the screenshot and use Upload.")
+    }
+  }
+
+  const canReadClipboard = Boolean(navigator.clipboard?.read)
+  const pasteKeys = /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘V' : 'Ctrl+V'
+  const hasKeyboard = matchMedia('(pointer: fine)').matches
 
   const manual = async () => navigate(`/r/${await createReceipt()}/items`)
 
@@ -45,9 +76,17 @@ export function Home() {
         <Button size="lg" disabled={busy} onClick={() => upload.current?.click()}>
           <ImageUp size={22} /> Upload a photo
         </Button>
+        {canReadClipboard && (
+          <Button size="lg" disabled={busy} onClick={() => void pasteFromClipboard()}>
+            <ClipboardPaste size={22} /> Paste a screenshot
+          </Button>
+        )}
         <Button variant="ghost" disabled={busy} onClick={() => void manual()}>
           <PencilLine size={18} /> Enter items by hand
         </Button>
+        {hasKeyboard && (
+          <p className="text-center text-sm text-stone-500">Tip: press {pasteKeys} here to paste a copied screenshot.</p>
+        )}
         {error && <Banner tone="warn">{error}</Banner>}
         <input
           ref={camera}
@@ -55,14 +94,14 @@ export function Home() {
           accept="image/*"
           capture="environment"
           hidden
-          onChange={(e) => void onFile(e.target.files?.[0]).finally(() => (e.target.value = ''))}
+          onChange={(e) => void onImage(e.target.files?.[0]).finally(() => (e.target.value = ''))}
         />
         <input
           ref={upload}
           type="file"
           accept="image/*"
           hidden
-          onChange={(e) => void onFile(e.target.files?.[0]).finally(() => (e.target.value = ''))}
+          onChange={(e) => void onImage(e.target.files?.[0]).finally(() => (e.target.value = ''))}
         />
       </Card>
 

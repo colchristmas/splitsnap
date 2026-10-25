@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import grocery from './fixtures/grocery.json'
 import restaurant from './fixtures/restaurant.json'
+import screenshot from './fixtures/screenshot.json'
 import { parseReceipt, type OcrLine } from './parse'
 
 /** Builds OCR lines from rows of [left text, right text], laid out like a printed receipt. */
@@ -53,6 +54,35 @@ describe('parseReceipt on real OCR output', () => {
       { kind: 'tip', label: 'Tip 20%', amountCents: 1260 },
     ])
     expect(r.printedTotalCents).toBe(8001)
+  })
+})
+
+describe('parseReceipt on an app screenshot', () => {
+  it('reads "Qty" lines, delivery fees and "Taxes"', () => {
+    const r = parseReceipt(screenshot.lines as OcrLine[])
+    expect(r.store).toBe('FreshCart Order')
+    expect(r.date).toBe('2026-10-22')
+    expect(r.items.map((i) => [i.name, i.quantity, i.totalCents])).toEqual([
+      ['Honeycrisp Apples', 3, 647],
+      ['Oat Milk Barista', 1, 499],
+      ['Cage-Free Eggs 12ct', 1, 549],
+      ['Basmati Rice 2 lb', 1, 729],
+      ['Frozen Dumplings', 2, 998],
+      ['Dish Sponges 3pk', 1, 379],
+      ['Avocados', 4, 500],
+      ['Greek Yogurt Tub', 1, 629],
+      ['Sparkling Water 12pk', 1, 599],
+      ['Coffee Beans', 1, 1299],
+    ])
+    expect(r.charges).toEqual([
+      { kind: 'fee', label: 'Service fee', amountCents: 341 },
+      { kind: 'fee', label: 'Bag fee', amountCents: 25 },
+      { kind: 'fee', label: 'Delivery fee', amountCents: 399 },
+      { kind: 'tax', label: 'Taxes', amountCents: 114 },
+      { kind: 'tip', label: 'Tip', amountCents: 600 },
+    ])
+    expect(r.subtotalCents).toBe(6828)
+    expect(r.printedTotalCents).toBe(8307)
   })
 })
 

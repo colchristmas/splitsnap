@@ -51,7 +51,7 @@ HTTPS is required on the phone because browsers only allow the camera and the fa
 ### 5. Try it
 
 1. **People tab:** rename "Me" to your name so shared summaries read well.
-2. **Home → Take a photo** (or **Upload a photo**). The first scan downloads the scanner once (31 MB), and later scans take a few seconds.
+2. **Home → Take a photo**, **Upload a photo** or **Paste a screenshot**. On a computer you can also press ⌘V / Ctrl+V on the Home screen. The first scan downloads the scanner once (31 MB), and later scans take a few seconds.
 3. **1. Items:** fix any misread names or prices. Tap ⌄ on an item for quantity, coupon and "taxed". Check that the total matches the receipt.
 4. **2. People:**
    - Add people. New names are saved automatically, and saved people and groups are one tap away.
@@ -83,6 +83,7 @@ No receipt handy? **Enter items by hand** on the Home screen works the same way.
 ## Features
 
 - **On-device scanning.** PaddleOCR (PP-OCRv6) finds items, quantities, coupons, tax, tip, bag fees and the printed total. Nothing is uploaded.
+- **Photos or screenshots.** Take a photo, upload one, or paste a screenshot, such as an online order receipt. Use the **Paste a screenshot** button, or ⌘V / Ctrl+V on a computer.
 - **Quick fixes.** Edit, add or remove items and charges. A check compares your total with the receipt's printed TOTAL.
 - **Item splits.** Split an item equally between the people you tap, or hand out multi-quantity items unit by unit (3× Coffee: Alex 2, Me 1).
 - **Fair shared charges.**
@@ -100,7 +101,7 @@ No receipt handy? **Enter items by hand** on the Home screen works the same way.
 
 ### Scanning
 
-1. The photo is oriented, downscaled to 2000 px and stored.
+1. The photo or screenshot is oriented and downscaled to at most ~4 megapixels, then stored. The size is capped by pixel count rather than the longest side, so tall scrolling screenshots keep readable text.
 2. [`@paddleocr/paddleocr-js`](https://www.npmjs.com/package/@paddleocr/paddleocr-js) runs PaddleOCR in a Web Worker on ONNX Runtime Web. It uses WebGPU when available, otherwise multi-threaded WASM.
 3. `src/lib/receipt/parse.ts` turns the text boxes into rows and classifies each one:
    - It deskews the boxes and groups them into printed rows.
