@@ -71,7 +71,7 @@ export interface CategoryMemory {
 export const emptyMemory = (): CategoryMemory => ({ item: new Map(), receipt: new Map() })
 
 /** Bump when the rules change, so saved receipts get re-guessed (manual picks are kept). */
-export const CATEGORY_RULES_VERSION = 3
+export const CATEGORY_RULES_VERSION = 4
 
 // Store section headers printed above items. A specific section decides the
 // item's category; a catch-all one ("GROCERY") is only a fallback.
@@ -121,7 +121,7 @@ const ABBREVIATIONS: Record<string, string> = {
   dtrg: 'detergent', wtr: 'water', sprklg: 'sparkling', jce: 'juice', sda: 'soda', cofe: 'coffee', coff: 'coffee',
   bev: 'beverage', bvg: 'beverage', snk: 'snack', crl: 'cereal', cerl: 'cereal', psta: 'pasta', sce: 'sauce', brd: 'bread',
   bgl: 'bagel', shmp: 'shampoo', tthpst: 'toothpaste', deo: 'deodorant', vit: 'vitamin', fairlif: 'fairlife',
-  sprk: 'sparkling', sprkl: 'sparkling', sprkw: 'sparkling water', sprkice: 'sparkling ice', strwbry: 'strawberry',
+  sprk: 'sparkling', sprkl: 'sparkling', sprklng: 'sparkling', sprklngice: 'sparkling ice', sprkw: 'sparkling water', sprkice: 'sparkling ice', strwbry: 'strawberry',
   mgo: 'mango', lm: 'lime', chry: 'cherry', garc: 'garcia', bj: 'ben jerry', crmy: 'creamy', vnla: 'vanilla',
   van: 'vanilla', grnola: 'granola',
 }
