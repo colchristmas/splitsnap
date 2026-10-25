@@ -180,3 +180,7 @@ Everything the app loads is served by the app itself, so no other cross-origin s
 - [ ] Deploy
 
 Not planned for now: payments or running balances, multiple users or sync, cloud OCR, currencies other than USD.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
