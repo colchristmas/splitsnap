@@ -1,8 +1,9 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo } from 'react'
-import { DEFAULT_CATEGORIES, categorize, categoryKey, type CategoryMemory } from '../lib/categories'
+import { CATEGORY_RULES_VERSION, DEFAULT_CATEGORIES, categorize, categoryKey, type CategoryMemory } from '../lib/categories'
 import type { Category, CategoryKind } from '../lib/types'
 import { db, newId } from './schema'
+import { getSetting, setSetting } from './settings'
 
 /** All categories in list order. */
 export function useCategories(): Category[] {
@@ -40,6 +41,37 @@ export async function recategorize(receiptId: string) {
     r.items.forEach((item, i) => (item.categoryId = c.itemCategoryIds[i]))
     await db.receipts.put(r)
   })
+}
+
+/**
+ * Runs at startup: when the keyword rules have improved since saved receipts
+ * were categorized, re-guesses them. Categories picked by hand are kept.
+ */
+export async function ensureCategoryRules() {
+  if ((await getSetting('categoryRules')) >= CATEGORY_RULES_VERSION) return
+  const memory = await loadMemory()
+  await db.receipts.toCollection().modify((r) => {
+    const c = categorize(r, memory)
+    r.categoryId = c.categoryId
+    r.items.forEach((item, i) => (item.categoryId = c.itemCategoryIds[i]))
+  })
+  await setSetting('categoryRules', CATEGORY_RULES_VERSION)
+}
+
+/** The user picked an item's category: keep it, and use it for this name next time. */
+export async function setItemCategory(receiptId: string, itemId: string, categoryId: string) {
+  let name = ''
+  await db.transaction('rw', db.receipts, async () => {
+    const r = await db.receipts.get(receiptId)
+    const item = r?.items.find((i) => i.id === itemId)
+    if (!r || !item) return
+    item.categoryId = categoryId
+    item.categoryManual = true
+    name = item.name
+    r.updatedAt = Date.now()
+    await db.receipts.put(r)
+  })
+  await rememberCategory('item', name, categoryId)
 }
 
 export async function addCategory(kind: CategoryKind, name: string) {

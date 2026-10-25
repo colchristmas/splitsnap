@@ -12,6 +12,8 @@ describe('categoryKey', () => {
     expect(categoryKey('Whole Milk 1GAL')).toBe('whole milk')
     expect(categoryKey('Cage-Free Eggs 12ct')).toBe('cage free eggs')
     expect(categoryKey('Jalapeño Chips')).toBe('jalapeno chips')
+    expect(categoryKey('Fairlif 2%Chc Mlk')).toBe('fairlif chc mlk')
+    expect(categoryKey('Hgdz Mnt Chc 16z')).toBe('hgdz mnt chc')
   })
 })
 
@@ -30,6 +32,15 @@ describe('guessItemCategory', () => {
     expect(guess('Ginger Ale')).toBe('i:drinks') // not Alcohol
     expect(guess('Pinot Noir')).toBe('i:alcohol')
     expect(guess('Mystery Thing')).toBe('i:other')
+  })
+
+  it('understands receipt abbreviations', () => {
+    expect(guess('Fairlif 2%Chc Mlk')).toBe('i:dairy') // Fairlife 2% chocolate milk
+    expect(guess('Hgdz Mnt Chc 16z')).toBe('i:frozen') // Häagen-Dazs mint chocolate chip
+    expect(guess('Bl Cp Cho Fg Br')).toBe('i:snacks') // chocolate bar
+    expect(guess('Bnls Chkn Brst')).toBe('i:meat')
+    expect(guess('Org Bnna')).toBe('i:produce')
+    expect(guess('Ppr Twl 6pk')).toBe('i:household')
   })
 
   it('treats restaurant food as meals, except drinks and desserts', () => {

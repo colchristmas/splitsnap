@@ -5,7 +5,7 @@ import { CategorySelect } from '../components/CategorySelect'
 import { MoneyField, Stepper, TextField } from '../components/fields'
 import { ActionBar, useReceiptContext } from '../components/layouts'
 import { Banner, Button, Card, Empty, SectionTitle, Segmented, cx } from '../components/ui'
-import { recategorize, rememberCategory, useCategoriesById } from '../db/categories'
+import { recategorize, rememberCategory, setItemCategory, useCategoriesById } from '../db/categories'
 import { useImageUrl } from '../db/hooks'
 import { updateReceipt } from '../db/receipts'
 import { newId } from '../db/schema'
@@ -36,10 +36,6 @@ export function Items() {
     })
     // A new name may mean a new category (unless the user picked one).
     if ('name' in patch) await recategorize(receipt.id)
-  }
-  const setItemCategory = async (item: Item, categoryId: string) => {
-    await changeItem(item.id, { categoryId, categoryManual: true })
-    await rememberCategory('item', item.name, categoryId)
   }
   const setStore = async (store: string) => {
     await updateReceipt(receipt.id, (r) => void (r.store = store))
@@ -107,7 +103,7 @@ export function Items() {
                 key={item.id}
                 item={item}
                 categoryName={item.categoryId ? categories.get(item.categoryId)?.name : undefined}
-                onCategory={(id) => void setItemCategory(item, id)}
+                onCategory={(id) => void setItemCategory(receipt.id, item.id, id)}
                 onChange={(patch) => void changeItem(item.id, patch)}
                 onDelete={() => update((r) => void (r.items = r.items.filter((i) => i.id !== item.id)))}
               />

@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import { DEFAULT_CATEGORIES, categorize, emptyMemory } from '../lib/categories'
+import { DEFAULT_CATEGORIES } from '../lib/categories'
 import type { Category, Group, Person, Receipt, StoredImage } from '../lib/types'
 
 export interface Setting {
@@ -31,20 +31,10 @@ class SplitSnapDB extends Dexie {
       images: 'id',
       settings: 'key',
     })
-    // v2: categories. Existing receipts get categorized by the keyword rules.
+    // v2: categories. Saved receipts are categorized at startup by ensureCategoryRules().
     this.version(2)
       .stores({ categories: 'id, kind', categoryMemory: 'key' })
-      .upgrade(async (tx) => {
-        await tx.table('categories').bulkAdd(DEFAULT_CATEGORIES)
-        await tx
-          .table<Receipt>('receipts')
-          .toCollection()
-          .modify((r) => {
-            const c = categorize(r, emptyMemory())
-            r.categoryId = c.categoryId
-            r.items.forEach((item, i) => (item.categoryId = c.itemCategoryIds[i]))
-          })
-      })
+      .upgrade((tx) => tx.table('categories').bulkAdd(DEFAULT_CATEGORIES))
     this.on('populate', (tx) => tx.table('categories').bulkAdd(DEFAULT_CATEGORIES))
   }
 }

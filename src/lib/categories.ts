@@ -33,15 +33,15 @@ export const DEFAULT_CATEGORIES: Category[] = [
 const ITEM_RULES: Record<string, string[]> = {
   'i:produce': ['apple', 'banana', 'orange', 'lemon', 'lime', 'avocado', 'tomato', 'potato', 'onion', 'garlic', 'lettuce', 'spinach', 'kale', 'arugula', 'carrot', 'celery', 'cucumber', 'bell pepper', 'broccoli', 'cauliflower', 'berry', 'berries', 'strawberry', 'strawberries', 'blueberry', 'blueberries', 'raspberry', 'raspberries', 'grape', 'melon', 'watermelon', 'mango', 'pineapple', 'peach', 'peaches', 'pear', 'plum', 'cherry', 'cherries', 'cilantro', 'parsley', 'basil', 'mint', 'ginger', 'mushroom', 'zucchini', 'squash', 'corn', 'salad', 'greens', 'scallion', 'jalapeno', 'produce', 'fruit', 'veggie', 'vegetable', 'clementine', 'kiwi'],
   'i:meat': ['chicken', 'beef', 'pork', 'steak', 'bacon', 'sausage', 'ham', 'turkey', 'lamb', 'salmon', 'shrimp', 'fish', 'cod', 'tilapia', 'ground beef', 'meatball', 'chorizo', 'prosciutto', 'salami', 'pepperoni', 'deli', 'thigh', 'breast', 'wing', 'drumstick', 'seafood', 'crab', 'lobster', 'scallop'],
-  'i:dairy': ['milk', 'cheese', 'cheddar', 'mozzarella', 'parmesan', 'feta', 'brie', 'yogurt', 'yoghurt', 'butter', 'cream', 'sour cream', 'cream cheese', 'egg', 'half and half', 'creamer', 'cottage cheese', 'kefir', 'ghee'],
+  'i:dairy': ['chocolate milk', 'fairlife', 'milk', 'cheese', 'cheddar', 'mozzarella', 'parmesan', 'feta', 'brie', 'yogurt', 'yoghurt', 'butter', 'cream', 'sour cream', 'cream cheese', 'egg', 'half and half', 'creamer', 'cottage cheese', 'kefir', 'ghee'],
   'i:bakery': ['bread', 'bagel', 'baguette', 'croissant', 'muffin', 'bun', 'tortilla', 'pita', 'sourdough', 'brioche', 'donut', 'doughnut', 'loaf', 'bakery', 'naan'],
   'i:pantry': ['rice', 'pasta', 'spaghetti', 'penne', 'noodle', 'flour', 'sugar', 'salt', 'black pepper', 'oil', 'olive oil', 'vinegar', 'sauce', 'ketchup', 'mustard', 'mayo', 'mayonnaise', 'salsa', 'soup', 'broth', 'stock', 'beans', 'lentil', 'chickpea', 'cereal', 'oats', 'oatmeal', 'granola', 'peanut butter', 'jam', 'jelly', 'honey', 'syrup', 'spice', 'seasoning', 'canned', 'coffee beans', 'ground coffee', 'tea bags', 'quinoa', 'couscous', 'ramen', 'basmati', 'jasmine rice'],
-  'i:frozen': ['frozen', 'ice cream', 'gelato', 'sorbet', 'popsicle', 'ice pop'],
-  'i:snacks': ['chips', 'crisps', 'cracker', 'pretzel', 'popcorn', 'cookie', 'candy', 'chocolate', 'gum', 'nuts', 'almonds', 'cashew', 'pistachio', 'trail mix', 'granola bar', 'protein bar', 'cake', 'brownie', 'tiramisu', 'cheesecake', 'dessert', 'pie', 'cupcake', 'snack', 'gummy', 'gummies'],
+  'i:frozen': ['frozen', 'ice cream', 'haagen dazs', 'ben jerry', 'gelato', 'sorbet', 'popsicle', 'ice pop'],
+  'i:snacks': ['oreo', 'doritos', 'cheetos', 'pringles', 'chips', 'crisps', 'cracker', 'pretzel', 'popcorn', 'cookie', 'candy', 'chocolate', 'gum', 'nuts', 'almonds', 'cashew', 'pistachio', 'trail mix', 'granola bar', 'protein bar', 'cake', 'brownie', 'tiramisu', 'cheesecake', 'dessert', 'pie', 'cupcake', 'snack', 'gummy', 'gummies'],
   'i:drinks': ['water', 'soda', 'cola', 'coke', 'pepsi', 'sprite', 'juice', 'lemonade', 'tea', 'iced tea', 'coffee', 'latte', 'espresso', 'cappuccino', 'americano', 'mocha', 'macchiato', 'kombucha', 'smoothie', 'seltzer', 'sparkling water', 'ginger ale', 'root beer', 'energy drink', 'gatorade', 'drink', 'beverage', 'boba', 'chai', 'oat milk', 'almond milk'],
   'i:alcohol': ['beer', 'wine', 'ipa', 'lager', 'ale', 'stout', 'pilsner', 'cider', 'vodka', 'whiskey', 'whisky', 'bourbon', 'tequila', 'rum', 'gin', 'margarita', 'mojito', 'cocktail', 'sangria', 'prosecco', 'champagne', 'hard seltzer', 'sake', 'mimosa', 'merlot', 'cabernet', 'pinot', 'chardonnay', 'sauvignon', 'riesling', 'negroni', 'spritz', 'martini'],
   'i:meals': ['pizza', 'burger', 'sandwich', 'wrap', 'burrito', 'taco', 'bowl', 'sushi', 'entree', 'appetizer', 'combo', 'meal', 'platter', 'fries', 'curry', 'pad thai', 'dumpling', 'quesadilla', 'nachos', 'kebab', 'gyro', 'poke'],
-  'i:household': ['paper towel', 'toilet paper', 'tissue', 'napkin', 'foil', 'plastic wrap', 'trash bag', 'garbage bag', 'sponge', 'detergent', 'dish soap', 'bleach', 'cleaner', 'wipes', 'laundry', 'dryer sheet', 'light bulb', 'battery', 'batteries', 'candle', 'ziploc', 'storage bag', 'dishwasher', 'paper plate', 'cups'],
+  'i:household': ['bounty', 'charmin', 'kleenex', 'clorox', 'lysol', 'paper towel', 'toilet paper', 'tissue', 'napkin', 'foil', 'plastic wrap', 'trash bag', 'garbage bag', 'sponge', 'detergent', 'dish soap', 'bleach', 'cleaner', 'wipes', 'laundry', 'dryer sheet', 'light bulb', 'battery', 'batteries', 'candle', 'ziploc', 'storage bag', 'dishwasher', 'paper plate', 'cups'],
   'i:personal': ['shampoo', 'conditioner', 'toothpaste', 'toothbrush', 'floss', 'deodorant', 'lotion', 'sunscreen', 'razor', 'shaving', 'body wash', 'hand soap', 'soap', 'vitamin', 'medicine', 'ibuprofen', 'tylenol', 'advil', 'bandage', 'tampon', 'makeup', 'cosmetic', 'mouthwash'],
 }
 
@@ -70,17 +70,42 @@ export interface CategoryMemory {
 
 export const emptyMemory = (): CategoryMemory => ({ item: new Map(), receipt: new Map() })
 
-/** Normalizes a name for matching: "Whole Milk 1GAL" → "whole milk". */
+/** Bump when the rules change, so saved receipts get re-guessed (manual picks are kept). */
+export const CATEGORY_RULES_VERSION = 2
+
+// Receipt printers abbreviate to fit: "FAIRLIF 2%CHC MLK", "BNLS CHKN BRST".
+const ABBREVIATIONS: Record<string, string> = {
+  mlk: 'milk', chc: 'chocolate', choc: 'chocolate', cho: 'chocolate', chcl: 'chocolate', chkn: 'chicken', chk: 'chicken',
+  chck: 'chicken', chik: 'chicken', ckn: 'chicken', bnls: 'boneless', brst: 'breast', grnd: 'ground', bf: 'beef',
+  trky: 'turkey', saus: 'sausage', ssg: 'sausage', bcn: 'bacon', chs: 'cheese', chz: 'cheese', ched: 'cheddar',
+  mozz: 'mozzarella', parm: 'parmesan', yog: 'yogurt', ygrt: 'yogurt', yogrt: 'yogurt', yghrt: 'yogurt', btr: 'butter',
+  crm: 'cream', frz: 'frozen', frzn: 'frozen', hgdz: 'ice cream', ckie: 'cookie', cki: 'cookie', crkr: 'cracker',
+  chp: 'chips', chps: 'chips', tmto: 'tomato', bnna: 'banana', bna: 'banana', appl: 'apple', apl: 'apple', avoc: 'avocado',
+  avcd: 'avocado', strwb: 'strawberry', strw: 'strawberry', blbry: 'blueberry', lttc: 'lettuce', spnch: 'spinach',
+  onin: 'onion', grlc: 'garlic', ptto: 'potato', ppr: 'paper', twl: 'towel', twls: 'towels', tlt: 'toilet',
+  dtrg: 'detergent', wtr: 'water', sprklg: 'sparkling', jce: 'juice', sda: 'soda', cofe: 'coffee', coff: 'coffee',
+  bev: 'beverage', bvg: 'beverage', snk: 'snack', crl: 'cereal', cerl: 'cereal', psta: 'pasta', sce: 'sauce', brd: 'bread',
+  bgl: 'bagel', shmp: 'shampoo', tthpst: 'toothpaste', deo: 'deodorant', vit: 'vitamin', fairlif: 'fairlife',
+}
+
+/** Normalizes a name for matching and learning: "Fairlif 2%Chc Mlk 52z" → "fairlif chc mlk". */
 export function categoryKey(name: string): string {
   return name
     .toLowerCase()
     .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
-    .split(/\s+/)
-    .filter((t) => !/\d/.test(t))
-    .join(' ')
+    .replace(/[\u0300-\u036f]/g, '')
+    // Sizes and amounts: "2%", "16z", "12ct", "1 gal", "6pk"
+    .replace(/\d+(?:[.,]\d+)?\s*(?:%|fl\s*oz|oz|z|lbs?|ct|pk|gal|qt|pt|ml|kg|g|l|in|pcs?)?\b/g, ' ')
     .replace(/[^a-z]+/g, ' ')
     .trim()
+}
+
+/** Spells out common receipt abbreviations so the keyword rules can match. */
+function expand(key: string): string {
+  return key
+    .split(' ')
+    .map((t) => ABBREVIATIONS[t] ?? t)
+    .join(' ')
 }
 
 /** The rule whose keyword matches the most specifically (longest keyword wins). */
@@ -97,9 +122,9 @@ function bestRule(key: string, rules: Record<string, string[]>, only?: string[])
 }
 
 export function guessItemCategory(name: string, receiptCategoryId: string | undefined, memory: CategoryMemory): string {
-  const key = categoryKey(name)
-  const learned = memory.item.get(key)
+  const learned = memory.item.get(categoryKey(name))
   if (learned) return learned
+  const key = expand(categoryKey(name))
   // "Frozen" describes where it lives, whatever the food: frozen dumplings, frozen pizza.
   if (/\bfrozen\b/.test(key)) return 'i:frozen'
   if (receiptCategoryId && RESTAURANT_RECEIPTS.has(receiptCategoryId)) {
