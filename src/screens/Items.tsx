@@ -218,10 +218,11 @@ function ItemRow({
           <ChevronDown size={18} className={cx('transition-transform', open && 'rotate-180')} />
         </button>
       </div>
-      {!open && (categoryName || item.discountCents > 0 || item.taxable) && (
+      {!open && (categoryName || item.discountCents > 0 || item.depositCents || item.taxable) && (
         <p className="flex gap-3 pl-2 text-xs text-stone-500">
           {categoryName && <span>{categoryName}</span>}
           {item.discountCents > 0 && <span className="text-emerald-700 dark:text-emerald-400">Coupon −{formatCents(item.discountCents)}</span>}
+          {Boolean(item.depositCents) && <span>Deposit +{formatCents(item.depositCents!)}</span>}
           {item.taxable && <span>Taxed</span>}
         </p>
       )}
@@ -243,6 +244,16 @@ function ItemRow({
               placeholder="$0.00"
               className="w-24"
               aria-label="Discount on this item"
+            />
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <span>Bottle deposit</span>
+            <MoneyField
+              value={item.depositCents || undefined}
+              onCommit={(c) => onChange({ depositCents: Math.abs(c ?? 0) })}
+              placeholder="$0.00"
+              className="w-24"
+              aria-label="Bottle deposit on this item"
             />
           </div>
           <label className="flex items-center justify-between">

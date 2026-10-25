@@ -1,3 +1,4 @@
+import { departmentOf } from '../categories'
 import { parseMoney } from '../money'
 import type { ChargeKind } from '../types'
 
@@ -13,6 +14,10 @@ export interface ParsedItem {
   quantity: number
   totalCents: number
   discountCents: number
+  /** Bottle/can deposit printed under the item; whoever has the item pays it. */
+  depositCents?: number
+  /** The store's section header above the item, e.g. "FROZEN FOOD". */
+  department?: string
   taxable?: boolean
 }
 
@@ -53,8 +58,12 @@ const SUBTOTAL = /\bSUB\s*-?\s*TOTAL(?![A-Z])/i
 const TAX = /\b(TAX(?:ES)?|VAT|GST|HST|PST)(?![A-Z])/i
 const TAX_INCLUDED = /\b(INCL\.?|INCLUDING|WITH|W\/)\s*(SALES\s+)?TAX\b/i
 const TIP = /\b(TIP|GRATUITY)(?![A-Z])/i
-const TOTAL = /\b(GRAND\s+)?TOTAL(?![A-Z])|\bAMOUNT\s+DUE\b|\bBALANCE\s+DUE\b/i
-const NOT_TOTAL = /\b(SAVINGS|SAVED|ITEMS?|QTY|COUNT)\b/i
+const TOTAL = /\b(GRAND\s+)?TOTAL(?![A-Z])|\bAMOUNT\s+DUE\b|\bBALANCE\b/i
+const NOT_TOTAL = /\b(SAVED|ITEMS?|QTY|COUNT)\b/i
+// Informational lines that repeat or summarize other amounts.
+const INFO =
+  /\b(PRICE\s+YOU\s+PAY|YOU\s+PAY|YOU\s+SAVED|TOTAL\s+SAVINGS|YOUR\s+SAVINGS|SAVINGS\s+TOTAL|REG(ULAR)?\s+PRICE|ORIGINAL\s+PRICE)\b/i
+const DEPOSIT = /\b(DEPOSIT|CRV|BTL|BOTTLE)\b/i
 // Payment lines normally follow the total (where parsing stops); this catches the few that don't.
 const PAYMENT = /\b(VISA|MASTERCARD|AMEX|DEBIT|CREDIT CARD|TENDER(ED)?|AUTH|APPROVAL|APPROVED|CHANGE DUE)\b|\*{2,}\s*\d{3,4}/i
 const DISCOUNT = /\b(COUPON|DISCOUNT|SAVINGS|PROMO|MFR|MARKDOWN)\b/i
@@ -76,6 +85,10 @@ export function parseReceipt(lines: OcrLine[]): ParsedReceipt {
   let pendingQty: { qty: number; unitCents: number } | null = null
   let lastWasItem = false
   let sawPrice = false
+  // Lines after the first total are only checked for tax and a later total
+  // ("TOTAL AFTER SAVINGS … TAX … BALANCE"); everything else is payment details.
+  let afterTotal = false
+  let department: string | undefined
 
   for (const row of rows) {
     if (!out.date) out.date = findDate(row)
@@ -104,33 +117,44 @@ export function parseReceipt(lines: OcrLine[]): ParsedReceipt {
     const flag = priceMatch?.[3]?.toUpperCase()
 
     if (cents === null) {
-      if (!sawPrice && !out.store && /[A-Za-z]{3}/.test(row) && !findDate(row)) out.store = tidy(row)
+      const dept = departmentOf(row)
+      if (dept) {
+        department = dept
+        lastWasItem = false
+        continue
+      }
+      const looksLikeTime = /\d{1,2}(:\d{2})?\s*[ap]\.?m\b/i.test(row)
+      if (!sawPrice && !out.store && /[A-Za-z]{3}/.test(row) && !findDate(row) && !looksLikeTime) out.store = tidy(row)
       if (/[A-Za-z]{2}/.test(row)) pendingName = row
       lastWasItem = false
       continue
     }
     sawPrice = true
 
+    if (INFO.test(name)) continue
     if (SUBTOTAL.test(name)) {
       out.subtotalCents = cents
       lastWasItem = false
       continue
     }
     if (TAX.test(name) && !TAX_INCLUDED.test(name)) {
-      out.charges.push({ kind: 'tax', label: tidy(name) || 'Tax', amountCents: cents })
+      if (cents !== 0) out.charges.push({ kind: 'tax', label: tidy(name) || 'Tax', amountCents: cents })
       lastWasItem = false
       continue
     }
     if (TIP.test(name)) {
-      out.charges.push({ kind: 'tip', label: tidy(name) || 'Tip', amountCents: cents })
+      // After the total, tip lines are suggestions ("18% = 11.34"), not charges.
+      if (!afterTotal) out.charges.push({ kind: 'tip', label: tidy(name) || 'Tip', amountCents: cents })
       lastWasItem = false
       continue
     }
     if (TOTAL.test(name) && !NOT_TOTAL.test(name)) {
-      out.printedTotalCents = cents
-      break // everything after the total is payment details
+      // A later total ("BALANCE") wins, but not "BALANCE DUE 0.00" after paying.
+      if (cents > 0) out.printedTotalCents = cents
+      afterTotal = true
+      continue
     }
-    if (PAYMENT.test(name)) continue
+    if (afterTotal || PAYMENT.test(name)) continue
 
     // Price-only row: the name was printed on the row above.
     if (!/[A-Za-z]{2}/.test(name.replace(QTY_AT, '')) && pendingName) {
@@ -147,8 +171,16 @@ export function parseReceipt(lines: OcrLine[]): ParsedReceipt {
     }
     if (cents === 0) continue
 
+    if (DEPOSIT.test(name)) {
+      // A deposit printed under a drink belongs to that drink.
+      const prev = out.items.at(-1)
+      if (lastWasItem && prev) prev.depositCents = (prev.depositCents ?? 0) + cents
+      else out.charges.push({ kind: 'fee', label: 'Bottle deposit', amountCents: cents })
+      continue
+    }
     if (FEE.test(name)) {
-      out.charges.push({ kind: 'fee', label: tidy(name.replace(QTY_AT, '')) || 'Fee', amountCents: cents })
+      const label = /\bBAGS?\b/i.test(name) ? 'Bag fee' : tidy(name.replace(QTY_AT, '')) || 'Fee'
+      out.charges.push({ kind: 'fee', label, amountCents: cents })
       lastWasItem = false
       continue
     }
@@ -170,6 +202,7 @@ export function parseReceipt(lines: OcrLine[]): ParsedReceipt {
     }
     pendingQty = null
     if (flag) item.taxable = flag === 'T' || flag === 'TX' || flag === 'X'
+    if (department) item.department = department
     item.name = tidy(name) || 'Item'
     out.items.push(item)
     lastWasItem = true

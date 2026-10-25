@@ -28,6 +28,10 @@ export interface Item {
   totalCents: number
   /** Amount taken off this line (positive), e.g. a coupon printed under it. */
   discountCents: number
+  /** Bottle/can deposit added to this line, paid by whoever has the item. */
+  depositCents?: number
+  /** The store's section header the item was printed under, e.g. "FROZEN FOOD". */
+  department?: string
   /** Set when the receipt marks taxed lines (T/TX); tax then splits over these only. */
   taxable?: boolean
   /**

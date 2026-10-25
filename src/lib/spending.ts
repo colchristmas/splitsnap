@@ -1,4 +1,4 @@
-import { split } from './split'
+import { itemNetCents, split } from './split'
 import type { Receipt } from './types'
 
 /** Item-category row for everything that isn't an item: tax, tip, fees, receipt-wide discounts. */
@@ -59,7 +59,7 @@ export function spending(receipts: Receipt[], personId?: string): Spending {
     } else {
       totalCents += result.grandTotalCents
       add(byReceipt, receiptCategory, result.grandTotalCents)
-      for (const item of receipt.items) add(byItem, item.categoryId ?? null, item.totalCents - item.discountCents)
+      for (const item of receipt.items) add(byItem, item.categoryId ?? null, itemNetCents(item))
       add(byItem, CHARGES_ROW, result.chargesTotalCents)
     }
     receiptCount++

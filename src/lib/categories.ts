@@ -38,7 +38,7 @@ const ITEM_RULES: Record<string, string[]> = {
   'i:pantry': ['rice', 'pasta', 'spaghetti', 'penne', 'noodle', 'flour', 'sugar', 'salt', 'black pepper', 'oil', 'olive oil', 'vinegar', 'sauce', 'ketchup', 'mustard', 'mayo', 'mayonnaise', 'salsa', 'soup', 'broth', 'stock', 'beans', 'lentil', 'chickpea', 'cereal', 'oats', 'oatmeal', 'granola', 'peanut butter', 'jam', 'jelly', 'honey', 'syrup', 'spice', 'seasoning', 'canned', 'coffee beans', 'ground coffee', 'tea bags', 'quinoa', 'couscous', 'ramen', 'basmati', 'jasmine rice'],
   'i:frozen': ['frozen', 'ice cream', 'haagen dazs', 'ben jerry', 'gelato', 'sorbet', 'popsicle', 'ice pop'],
   'i:snacks': ['oreo', 'doritos', 'cheetos', 'pringles', 'chips', 'crisps', 'cracker', 'pretzel', 'popcorn', 'cookie', 'candy', 'chocolate', 'gum', 'nuts', 'almonds', 'cashew', 'pistachio', 'trail mix', 'granola bar', 'protein bar', 'cake', 'brownie', 'tiramisu', 'cheesecake', 'dessert', 'pie', 'cupcake', 'snack', 'gummy', 'gummies'],
-  'i:drinks': ['water', 'soda', 'cola', 'coke', 'pepsi', 'sprite', 'juice', 'lemonade', 'tea', 'iced tea', 'coffee', 'latte', 'espresso', 'cappuccino', 'americano', 'mocha', 'macchiato', 'kombucha', 'smoothie', 'seltzer', 'sparkling water', 'ginger ale', 'root beer', 'energy drink', 'gatorade', 'drink', 'beverage', 'boba', 'chai', 'oat milk', 'almond milk'],
+  'i:drinks': ['sparkling ice', 'water', 'soda', 'cola', 'coke', 'pepsi', 'sprite', 'juice', 'lemonade', 'tea', 'iced tea', 'coffee', 'latte', 'espresso', 'cappuccino', 'americano', 'mocha', 'macchiato', 'kombucha', 'smoothie', 'seltzer', 'sparkling water', 'ginger ale', 'root beer', 'energy drink', 'gatorade', 'drink', 'beverage', 'boba', 'chai', 'oat milk', 'almond milk'],
   'i:alcohol': ['beer', 'wine', 'ipa', 'lager', 'ale', 'stout', 'pilsner', 'cider', 'vodka', 'whiskey', 'whisky', 'bourbon', 'tequila', 'rum', 'gin', 'margarita', 'mojito', 'cocktail', 'sangria', 'prosecco', 'champagne', 'hard seltzer', 'sake', 'mimosa', 'merlot', 'cabernet', 'pinot', 'chardonnay', 'sauvignon', 'riesling', 'negroni', 'spritz', 'martini'],
   'i:meals': ['pizza', 'burger', 'sandwich', 'wrap', 'burrito', 'taco', 'bowl', 'sushi', 'entree', 'appetizer', 'combo', 'meal', 'platter', 'fries', 'curry', 'pad thai', 'dumpling', 'quesadilla', 'nachos', 'kebab', 'gyro', 'poke'],
   'i:household': ['bounty', 'charmin', 'kleenex', 'clorox', 'lysol', 'paper towel', 'toilet paper', 'tissue', 'napkin', 'foil', 'plastic wrap', 'trash bag', 'garbage bag', 'sponge', 'detergent', 'dish soap', 'bleach', 'cleaner', 'wipes', 'laundry', 'dryer sheet', 'light bulb', 'battery', 'batteries', 'candle', 'ziploc', 'storage bag', 'dishwasher', 'paper plate', 'cups'],
@@ -71,7 +71,42 @@ export interface CategoryMemory {
 export const emptyMemory = (): CategoryMemory => ({ item: new Map(), receipt: new Map() })
 
 /** Bump when the rules change, so saved receipts get re-guessed (manual picks are kept). */
-export const CATEGORY_RULES_VERSION = 2
+export const CATEGORY_RULES_VERSION = 3
+
+// Store section headers printed above items. A specific section decides the
+// item's category; a catch-all one ("GROCERY") is only a fallback.
+const DEPARTMENTS: { pattern: RegExp; categoryId: string; weak?: boolean }[] = [
+  { pattern: /^(BAKE ?SHOP|BAKERY)$/, categoryId: 'i:bakery' },
+  { pattern: /^DAIRY( & EGGS)?$/, categoryId: 'i:dairy' },
+  { pattern: /^FROZEN( FOODS?)?$/, categoryId: 'i:frozen' },
+  { pattern: /^(PRODUCE|FRUITS? & VEG(ETABLES|GIES)?)$/, categoryId: 'i:produce' },
+  { pattern: /^(MEATS?|SEAFOOD|MEAT & SEAFOOD|BUTCHER)$/, categoryId: 'i:meat' },
+  { pattern: /^(BEER|WINE|BEER & WINE|WINE & SPIRITS|LIQUOR|ALCOHOL)$/, categoryId: 'i:alcohol' },
+  { pattern: /^(BEVERAGES?|DRINKS)$/, categoryId: 'i:drinks' },
+  { pattern: /^(SNACKS?|CANDY)$/, categoryId: 'i:snacks' },
+  { pattern: /^(HEALTH & BEAUTY( CARE)?|HBC|HBA|PERSONAL CARE|PHARMACY)$/, categoryId: 'i:personal' },
+  { pattern: /^(HOUSEHOLD|CLEANING|PAPER GOODS)$/, categoryId: 'i:household' },
+  { pattern: /^(DELI|PREPARED FOODS?|HOT FOODS?)$/, categoryId: 'i:meals', weak: true },
+  { pattern: /^(GROCERY|GROCERIES)$/, categoryId: 'i:pantry', weak: true },
+  { pattern: /^(CONVENIENCE ITEMS?|GENERAL MERCHANDISE|GM|MISC(ELLANEOUS)?)$/, categoryId: 'i:other', weak: true },
+]
+
+const normalizeDepartment = (text: string) =>
+  text
+    .toUpperCase()
+    .replace(/\bAND\b/g, '&')
+    .replace(/[^A-Z&]+/g, ' ')
+    .trim()
+
+/** The department name if `text` is a store section header like "FROZEN FOOD", else undefined. */
+export function departmentOf(text: string): string | undefined {
+  const d = normalizeDepartment(text)
+  return DEPARTMENTS.some((x) => x.pattern.test(d)) ? d : undefined
+}
+
+function departmentCategory(department: string | undefined) {
+  return department ? DEPARTMENTS.find((x) => x.pattern.test(normalizeDepartment(department))) : undefined
+}
 
 // Receipt printers abbreviate to fit: "FAIRLIF 2%CHC MLK", "BNLS CHKN BRST".
 const ABBREVIATIONS: Record<string, string> = {
@@ -86,6 +121,9 @@ const ABBREVIATIONS: Record<string, string> = {
   dtrg: 'detergent', wtr: 'water', sprklg: 'sparkling', jce: 'juice', sda: 'soda', cofe: 'coffee', coff: 'coffee',
   bev: 'beverage', bvg: 'beverage', snk: 'snack', crl: 'cereal', cerl: 'cereal', psta: 'pasta', sce: 'sauce', brd: 'bread',
   bgl: 'bagel', shmp: 'shampoo', tthpst: 'toothpaste', deo: 'deodorant', vit: 'vitamin', fairlif: 'fairlife',
+  sprk: 'sparkling', sprkl: 'sparkling', sprkw: 'sparkling water', sprkice: 'sparkling ice', strwbry: 'strawberry',
+  mgo: 'mango', lm: 'lime', chry: 'cherry', garc: 'garcia', bj: 'ben jerry', crmy: 'creamy', vnla: 'vanilla',
+  van: 'vanilla', grnola: 'granola',
 }
 
 /** Normalizes a name for matching and learning: "Fairlif 2%Chc Mlk 52z" → "fairlif chc mlk". */
@@ -121,16 +159,23 @@ function bestRule(key: string, rules: Record<string, string[]>, only?: string[])
   return best?.id
 }
 
-export function guessItemCategory(name: string, receiptCategoryId: string | undefined, memory: CategoryMemory): string {
+export function guessItemCategory(
+  name: string,
+  receiptCategoryId: string | undefined,
+  memory: CategoryMemory,
+  department?: string,
+): string {
   const learned = memory.item.get(categoryKey(name))
   if (learned) return learned
+  const dept = departmentCategory(department)
+  if (dept && !dept.weak) return dept.categoryId
   const key = expand(categoryKey(name))
   // "Frozen" describes where it lives, whatever the food: frozen dumplings, frozen pizza.
   if (/\bfrozen\b/.test(key)) return 'i:frozen'
   if (receiptCategoryId && RESTAURANT_RECEIPTS.has(receiptCategoryId)) {
     return bestRule(key, ITEM_RULES, RESTAURANT_RULES) ?? 'i:meals'
   }
-  return bestRule(key, ITEM_RULES) ?? (receiptCategoryId === 'r:coffee' ? 'i:drinks' : 'i:other')
+  return bestRule(key, ITEM_RULES) ?? dept?.categoryId ?? (receiptCategoryId === 'r:coffee' ? 'i:drinks' : 'i:other')
 }
 
 export function guessReceiptCategory(
@@ -167,12 +212,14 @@ export function guessReceiptCategory(
  */
 export function categorize(
   receipt: Pick<Receipt, 'store' | 'charges' | 'categoryId' | 'categoryManual'> & {
-    items: Pick<Item, 'name' | 'categoryId' | 'categoryManual'>[]
+    items: Pick<Item, 'name' | 'categoryId' | 'categoryManual' | 'department'>[]
   },
   memory: CategoryMemory,
 ): { categoryId: string; itemCategoryIds: (string | undefined)[] } {
   const guessItems = (context?: string) =>
-    receipt.items.map((i) => (i.categoryManual ? i.categoryId : i.name.trim() ? guessItemCategory(i.name, context, memory) : undefined))
+    receipt.items.map((i) =>
+      i.categoryManual ? i.categoryId : i.name.trim() ? guessItemCategory(i.name, context, memory, i.department) : undefined,
+    )
 
   const firstPass = guessItems()
   const categoryId =

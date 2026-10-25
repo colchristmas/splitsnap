@@ -106,6 +106,16 @@ describe('split', () => {
     expect(r.unassignedItemIds).toEqual(['coffee'])
   })
 
+  it('charges a bottle deposit to whoever has the item', () => {
+    const r = split({
+      participantIds: ['a', 'b'],
+      items: [item('soda', 169, { a: 1 }, { depositCents: 5 }), item('chips', 300, { b: 1 })],
+      charges: [],
+    })
+    expect(totals(r)).toEqual({ a: 174, b: 300 })
+    expect(r.grandTotalCents).toBe(474)
+  })
+
   it('subtracts item discounts before splitting', () => {
     const r = split({
       participantIds: ['a', 'b'],
