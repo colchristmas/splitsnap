@@ -58,7 +58,9 @@ HTTPS is required on the phone because browsers only allow the camera and the fa
    - Pick who paid.
    - Tap people on each item. Items with a quantity can be split **By units**.
 5. **3. Split:** see each person's total, grouped by category. Use **Share all** or the share icon on one person, then **Save**.
-6. **Spending tab:** see where the money went once a few receipts are saved.
+6. **People tab:** see who owes you what. Tap a person for their bills, then **Mark all settled** when they pay you back.
+7. **History → Combine bills:** pick a week's worth of bills and share one total per person.
+8. **Spending tab:** see where the money went once a few receipts are saved.
 
 No receipt handy? **Enter items by hand** on the Home screen works the same way.
 
@@ -94,6 +96,11 @@ No receipt handy? **Enter items by hand** on the Home screen works the same way.
   - If the receipt marks taxed lines (`T`/`TX`), tax is split over those items only.
 - **Saved people and groups.** Recent people show first. A group like "Roommates" adds everyone at once.
 - **Any payer.** Pick who paid each receipt. Summaries read "Alex owes Sam $12.40".
+- **Running balances, like Splitwise but local.**
+  - Each person shows what's open between you across saved bills: "Sebastian owes you $14.54" or "You owe Paul $0.49".
+  - If you paid, everyone owes you their share; if someone else paid, you owe them yours.
+  - Tap a person to see every bill with them, with a running balance. Mark bills settled once you're paid back, one at a time or all at once.
+- **Combine bills.** In History, tap **Combine bills**, pick several saved bills, and get one total per person to share. Then mark them all settled.
 - **Sharing.** Share as text through the phone's share sheet, or copy it to the clipboard.
 - **Categories.**
   - Receipts get a type (Groceries, Dining out, Takeout & delivery…) and items get one too (Produce, Dairy & eggs, Alcohol, Meals…).
@@ -146,6 +153,16 @@ At restaurants, food defaults to Meals unless it's clearly a drink or dessert. C
 
 `src/lib/spending.ts` totals saved receipts by receipt type and item type, using the split engine for each person's share.
 
+### Balances
+
+`src/lib/balances.ts` turns each saved bill into shares between you and each person:
+
+- **You paid:** each person owes you their split total.
+- **Someone else paid:** you owe them your total.
+- **Not tracked:** debts between two other people.
+
+A person's balance is the sum of the shares that aren't settled. "Settled" is stored per bill and person, so it can be undone. Combining bills adds up the unsettled shares of the bills you pick.
+
 ### Storage
 
 All data lives in IndexedDB via [Dexie](https://dexie.org): people, groups, receipts, receipt photos, categories and learned category choices. Upgrading from an older version categorizes existing receipts automatically. Export a backup from **Settings → Backup** to keep a copy or move to another device.
@@ -158,7 +175,7 @@ All data lives in IndexedDB via [Dexie](https://dexie.org): people, groups, rece
 scripts/fetch-ocr-assets.mjs   downloads OCR models + copies ORT WASM into public/
 src/
   App.tsx, main.tsx            routes and startup
-  screens/                     Home, Scan, Items, Assign, Summary, History, Spending, People, Settings
+  screens/                     Home, Scan, Items, Assign, Summary, History, Combine, Spending, People, PersonPage, Settings
   components/                  layouts, form fields, people picker, shared UI
   db/                          Dexie schema, people/groups, receipts, categories, settings, backup, React hooks
   lib/types.ts                 domain types (Person, Group, Receipt, Item, Charge)
@@ -166,6 +183,7 @@ src/
   lib/split.ts                 split engine (+ tests)
   lib/categories.ts            starter categories, keyword rules, guessing and learning (+ tests)
   lib/spending.ts              spending totals by category and person (+ tests)
+  lib/balances.ts              balances with each person, combining bills (+ tests)
   lib/share.ts                 share text, Web Share / clipboard (+ tests)
   lib/receipt/parse.ts         OCR boxes → items/charges (+ tests and real OCR fixtures)
   lib/ocr/engine.ts            model download/caching, PaddleOCR worker
@@ -196,13 +214,14 @@ Everything the app loads is served by the app itself, so no other cross-origin s
 - [x] Screens: Home, Scan, Items, Assign, Split, History, Spending, People, Settings
 - [x] Paste screenshots
 - [x] Receipt and item categories with learning, spending totals
+- [x] Running balances, activity per person, combine bills, mark settled
 - [x] JSON backup export/import, storage persistence
 - [x] Installable PWA (the app shell works offline)
 - [ ] Fix scanning while offline
 - [ ] Test with real receipt photos on iPhone Safari and tune the parser
 - [ ] Deploy
 
-Not planned for now: payments or running balances, multiple users or sync, cloud OCR, currencies other than USD.
+Not planned for now: real payments (settling only records that you were paid back), multiple users or sync, cloud OCR, currencies other than USD.
 
 ## License
 
