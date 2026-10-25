@@ -78,8 +78,11 @@ export function MoneyField({
       value={text}
       onFocus={(e) => {
         setEditing(true)
-        setText(value === undefined ? '' : (value / 100).toFixed(2))
-        requestAnimationFrame(() => e.target.select())
+        // Never rewrite the text after focus: a delayed change could land
+        // between keystrokes ("30" becoming "300.00"). Empty amounts start
+        // blank; others are selected so typing replaces them ("$4.29" parses).
+        if (!value) setText('')
+        else e.currentTarget.select()
       }}
       onChange={(e) => setText(e.target.value)}
       onBlur={() => {

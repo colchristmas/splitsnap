@@ -57,7 +57,10 @@ HTTPS is required on the phone because browsers only allow the camera and the fa
    - Add people. New names are saved automatically, and saved people and groups are one tap away.
    - Pick who paid.
    - Tap people on each item. Items with a quantity can be split **By units**.
-5. **3. Split:** see each person's total. Use **Share all** or the share icon on one person, then **Save**.
+5. **3. Split:** see each person's total, grouped by category. Use **Share all** or the share icon on one person, then **Save**.
+6. **People tab:** see who owes you what. Tap a person for their bills, then **Mark all settled** when they pay you back.
+7. **History → Combine bills:** pick a week's worth of bills and share one total per person.
+8. **Spending tab:** see where the money went once a few receipts are saved.
 
 No receipt handy? **Enter items by hand** on the Home screen works the same way.
 
@@ -93,8 +96,18 @@ No receipt handy? **Enter items by hand** on the Home screen works the same way.
   - If the receipt marks taxed lines (`T`/`TX`), tax is split over those items only.
 - **Saved people and groups.** Recent people show first. A group like "Roommates" adds everyone at once.
 - **Any payer.** Pick who paid each receipt. Summaries read "Alex owes Sam $12.40".
+- **Running balances, like Splitwise but local.**
+  - Each person shows what's open between you across saved bills: "Sebastian owes you $14.54" or "You owe Paul $0.49".
+  - If you paid, everyone owes you their share; if someone else paid, you owe them yours.
+  - Tap a person to see every bill with them, with a running balance. Mark bills settled once you're paid back, one at a time or all at once.
+- **Combine bills.** In History, tap **Combine bills**, pick several saved bills, and get one total per person to share. Then mark them all settled.
 - **Sharing.** Share as text through the phone's share sheet, or copy it to the clipboard.
-- **History and backup.** Searchable history with photos, plus JSON backup export/import (merge or replace).
+- **Categories.**
+  - Receipts get a type (Groceries, Dining out, Takeout & delivery…) and items get one too (Produce, Dairy & eggs, Alcohol, Meals…).
+  - They're picked automatically from keyword rules. When you change one, SplitSnap remembers it for that store or item next time.
+  - You can edit both lists in **Settings → Categories**.
+- **Spending.** Totals by receipt type and item type for a month, a year or all time, for everyone or for one person's share.
+- **History and backup.** Searchable history with photos and category filters, plus JSON backup export/import (merge or replace).
 - **Exact to the penny.** Integer cents and largest-remainder rounding mean shares always add up to the total.
 
 ## How it works
@@ -128,9 +141,31 @@ There are two models; you can switch in **Settings → Scanner**:
 
 Items nobody is on yet (or with units left over) are reported as unassigned and block the summary.
 
+### Categories
+
+`src/lib/categories.ts` picks categories in this order:
+
+1. **Your past choices.** Names are normalized first, so "WHOLE MILK 1GAL" matches "whole milk".
+2. **Keyword rules.** The most specific keyword wins, so "coffee beans" is Pantry, not Drinks.
+3. **Receipt-level signals.** A tip without delivery suggests dining out, a delivery fee suggests takeout, and otherwise the mix of items decides.
+
+At restaurants, food defaults to Meals unless it's clearly a drink or dessert. Categories you set by hand are never overwritten.
+
+`src/lib/spending.ts` totals saved receipts by receipt type and item type, using the split engine for each person's share.
+
+### Balances
+
+`src/lib/balances.ts` turns each saved bill into shares between you and each person:
+
+- **You paid:** each person owes you their split total.
+- **Someone else paid:** you owe them your total.
+- **Not tracked:** debts between two other people.
+
+A person's balance is the sum of the shares that aren't settled. "Settled" is stored per bill and person, so it can be undone. Combining bills adds up the unsettled shares of the bills you pick.
+
 ### Storage
 
-All data lives in IndexedDB via [Dexie](https://dexie.org) in four tables: people, groups, receipts and receipt photos. Export a backup from **Settings → Backup** to keep a copy or move to another device.
+All data lives in IndexedDB via [Dexie](https://dexie.org): people, groups, receipts, receipt photos, categories and learned category choices. Upgrading from an older version categorizes existing receipts automatically. Export a backup from **Settings → Backup** to keep a copy or move to another device.
 
 > **iPhone:** Safari may clear data for web apps that aren't installed and haven't been opened for about 7 days. Add SplitSnap to your Home Screen and export a backup now and then.
 
@@ -140,12 +175,15 @@ All data lives in IndexedDB via [Dexie](https://dexie.org) in four tables: peopl
 scripts/fetch-ocr-assets.mjs   downloads OCR models + copies ORT WASM into public/
 src/
   App.tsx, main.tsx            routes and startup
-  screens/                     Home, Scan, Items, Assign, Summary, History, People, Settings
+  screens/                     Home, Scan, Items, Assign, Summary, History, Combine, Spending, People, PersonPage, Settings
   components/                  layouts, form fields, people picker, shared UI
-  db/                          Dexie schema, people/groups, receipts, settings, backup, React hooks
+  db/                          Dexie schema, people/groups, receipts, categories, settings, backup, React hooks
   lib/types.ts                 domain types (Person, Group, Receipt, Item, Charge)
   lib/money.ts                 cents parsing/formatting, allocate()
   lib/split.ts                 split engine (+ tests)
+  lib/categories.ts            starter categories, keyword rules, guessing and learning (+ tests)
+  lib/spending.ts              spending totals by category and person (+ tests)
+  lib/balances.ts              balances with each person, combining bills (+ tests)
   lib/share.ts                 share text, Web Share / clipboard (+ tests)
   lib/receipt/parse.ts         OCR boxes → items/charges (+ tests and real OCR fixtures)
   lib/ocr/engine.ts            model download/caching, PaddleOCR worker
@@ -173,14 +211,17 @@ Everything the app loads is served by the app itself, so no other cross-origin s
 - [x] OCR spike: model choice, worker and threading setup, isolation headers
 - [x] Split engine, receipt parser and share text, with tests
 - [x] Storage: people, groups, receipts, photos, settings
-- [x] Screens: Home, Scan, Items, Assign, Split, History, People, Settings
+- [x] Screens: Home, Scan, Items, Assign, Split, History, Spending, People, Settings
+- [x] Paste screenshots
+- [x] Receipt and item categories with learning, spending totals
+- [x] Running balances, activity per person, combine bills, mark settled
 - [x] JSON backup export/import, storage persistence
 - [x] Installable PWA (the app shell works offline)
 - [ ] Fix scanning while offline
 - [ ] Test with real receipt photos on iPhone Safari and tune the parser
 - [ ] Deploy
 
-Not planned for now: payments or running balances, multiple users or sync, cloud OCR, currencies other than USD.
+Not planned for now: real payments (settling only records that you were paid back), multiple users or sync, cloud OCR, currencies other than USD.
 
 ## License
 

@@ -4,9 +4,11 @@ import { db } from './schema'
 
 export interface Settings {
   ocrModel: OcrModel
+  /** CATEGORY_RULES_VERSION that saved receipts were last categorized with. */
+  categoryRules: number
 }
 
-const DEFAULTS: Settings = { ocrModel: 'accurate' }
+const DEFAULTS: Settings = { ocrModel: 'accurate', categoryRules: 0 }
 
 export async function getSetting<K extends keyof Settings>(key: K): Promise<Settings[K]> {
   const row = await db.settings.get(key)

@@ -1,4 +1,4 @@
-import { ArrowLeft, History, Home, Settings, Users } from 'lucide-react'
+import { ArrowLeft, ChartBar, History, Home, Settings, Users } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link, NavLink, Outlet, useLocation, useOutletContext, useParams } from 'react-router'
 import { useReceipt } from '../db/hooks'
@@ -8,6 +8,7 @@ import { Empty, cx } from './ui'
 const TABS = [
   { to: '/', label: 'Home', icon: Home },
   { to: '/history', label: 'History', icon: History },
+  { to: '/spending', label: 'Spending', icon: ChartBar },
   { to: '/people', label: 'People', icon: Users },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
@@ -24,7 +25,7 @@ export function TabsLayout() {
             <li key={to} className="flex-1">
               <NavLink
                 to={to}
-                end
+                end={to === '/'}
                 className={({ isActive }) =>
                   cx(
                     'flex flex-col items-center gap-0.5 py-2 text-xs font-medium',

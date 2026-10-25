@@ -3,16 +3,18 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { ActionBar, useReceiptContext } from '../components/layouts'
 import { Avatar, Banner, Button, Card } from '../components/ui'
+import { useCategoriesById } from '../db/categories'
 import { usePeopleById } from '../db/hooks'
 import { updateReceipt } from '../db/receipts'
 import { formatCents } from '../lib/money'
-import { formatDate, personText, receiptText, shareLabel, shareText } from '../lib/share'
+import { formatDate, groupByCategory, personText, receiptText, shareLabel, shareText, type CategoryGroup } from '../lib/share'
 import { split, type PersonSplit } from '../lib/split'
 
 export function Summary() {
   const receipt = useReceiptContext()
   const navigate = useNavigate()
   const byId = usePeopleById()
+  const categories = useCategoriesById()
   const [toast, setToast] = useState<string>()
   const result = useMemo(() => split(receipt), [receipt])
   const name = (id: string) => byId.get(id)?.name ?? 'Someone'
@@ -77,7 +79,8 @@ export function Summary() {
             color={byId.get(p.personId)?.color}
             payerName={name(receipt.payerId)}
             isPayer={p.personId === receipt.payerId}
-            onShare={() => void share(personText(receipt, p, name))}
+            groups={groupByCategory(p.items, receipt, categories)}
+            onShare={() => void share(personText(receipt, p, name, categories))}
           />
         ))}
       </div>
@@ -91,7 +94,7 @@ export function Summary() {
       )}
 
       <ActionBar>
-        <Button className="flex-1" onClick={() => void share(receiptText(receipt, result, name))}>
+        <Button className="flex-1" onClick={() => void share(receiptText(receipt, result, name, categories))}>
           <Share2 size={18} /> Share all
         </Button>
         <Button
@@ -117,6 +120,7 @@ function PersonCard({
   color,
   payerName,
   isPayer,
+  groups,
   onShare,
 }: {
   split: PersonSplit
@@ -124,6 +128,7 @@ function PersonCard({
   color?: string
   payerName: string
   isPayer: boolean
+  groups: CategoryGroup[]
   onShare: () => void
 }) {
   const charges = p.charges.filter((c) => c.cents !== 0)
@@ -143,18 +148,29 @@ function PersonCard({
         )}
       </div>
       <ul className="mt-3 grid gap-0.5 border-t border-stone-100 pt-2 text-sm dark:border-stone-800">
-        {p.items.map((i) => {
-          const frac = shareLabel(i)
-          return (
-            <li key={i.itemId} className="flex justify-between gap-2 text-stone-700 dark:text-stone-300">
-              <span className="min-w-0 truncate">
-                {i.name || 'Item'}
-                {frac && <span className="text-stone-500"> {frac}</span>}
-              </span>
-              <span className="tabular-nums">{formatCents(i.cents)}</span>
+        {groups.map((g) => [
+          g.name && (
+            <li key={`h-${g.name}`} className="mt-1.5 flex justify-between gap-2 text-xs font-semibold tracking-wide text-stone-500 uppercase first:mt-0">
+              <span>{g.name}</span>
+              {g.items.length > 1 && <span className="tabular-nums">{formatCents(g.cents)}</span>}
             </li>
-          )
-        })}
+          ),
+          ...g.items.map((i) => {
+            const frac = shareLabel(i)
+            return (
+              <li key={i.itemId} className="flex justify-between gap-2 text-stone-700 dark:text-stone-300">
+                <span className="min-w-0 truncate">
+                  {i.name || 'Item'}
+                  {frac && <span className="text-stone-500"> {frac}</span>}
+                </span>
+                <span className="tabular-nums">{formatCents(i.cents)}</span>
+              </li>
+            )
+          }),
+        ])}
+        {charges.length > 0 && groups.some((g) => g.name) && (
+          <li className="mt-1.5 text-xs font-semibold tracking-wide text-stone-500 uppercase">Shared charges</li>
+        )}
         {charges.map((c) => (
           <li key={c.chargeId} className="flex justify-between gap-2 text-stone-500">
             <span className="min-w-0 truncate">{c.label}</span>

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import grocery from './fixtures/grocery.json'
 import restaurant from './fixtures/restaurant.json'
 import screenshot from './fixtures/screenshot.json'
+import { categorize, emptyMemory } from '../categories'
 import { parseReceipt, type OcrLine } from './parse'
 
 /** Builds OCR lines from rows of [left text, right text], laid out like a printed receipt. */
@@ -32,7 +33,7 @@ describe('parseReceipt on real OCR output', () => {
       { name: 'Chicken Thighs', quantity: 1, totalCents: 912, discountCents: 0, taxable: false },
     ])
     expect(r.charges).toEqual([
-      { kind: 'fee', label: 'Bag Fee', amountCents: 10 },
+      { kind: 'fee', label: 'Bag fee', amountCents: 10 },
       { kind: 'tax', label: 'Tax', amountCents: 86 },
     ])
     expect(r.subtotalCents).toBe(4275)
@@ -83,6 +84,62 @@ describe('parseReceipt on an app screenshot', () => {
     ])
     expect(r.subtotalCents).toBe(6828)
     expect(r.printedTotalCents).toBe(8307)
+  })
+})
+
+describe('parseReceipt on a sectioned grocery receipt', () => {
+  // Same layout as a real Star Market-style bill: section headers, a coupon with
+  // "PRICE YOU PAY", bottle deposits, then TOTAL AFTER SAVINGS / TAX / BALANCE.
+  const lines = receipt([
+    ['STORE #73 10/17/26 08:05PM'],
+    ['BAKE SHOP'],
+    ['3SL VAR CHCK', '8.49 F'],
+    ['DAIRY'],
+    ['FAIRLIF2%CHC MLK', '5.49 F'],
+    ['FROZEN FOOD'],
+    ['HGDZ MNT CHC 16Z', '5.39 F'],
+    ['SAVINGS', '1.40-F'],
+    ['PRICE YOU PAY 3.99'],
+    ['BJ CP CHO FG BR', '1.79 F'],
+    ['BJ CUP CHRY GARC', '1.79 F'],
+    ['GROCERY'],
+    ['SPRKICE STRWBRY', '1.69 F'],
+    ['DP BTL/CAN DEPOSIT', '0.05 F'],
+    ['ORG MGO LM SPRKW', '1.69 F'],
+    ['DP BTL/CAN DEPOSIT', '0.05 F'],
+    ['CONVENIENCE ITEMS'],
+    ['MR BAG FEE NP', '0.05'],
+    ['Total After Savings', '25.08'],
+    ['TAX', '0.00'],
+    ['**** BALANCE', '25.08'],
+    ['Payment Type: VISA CREDIT'],
+  ])
+
+  it('reads sections, coupons, deposits and the final balance', () => {
+    const r = parseReceipt(lines)
+    expect(r.store).toBeUndefined() // section headers aren't the store name
+    expect(r.date).toBe('2026-10-17')
+    expect(r.items.map((i) => [i.name, i.totalCents, i.discountCents, i.depositCents ?? 0, i.department])).toEqual([
+      ['3sl Var Chck', 849, 0, 0, 'BAKE SHOP'],
+      ['Fairlif 2%Chc Mlk', 549, 0, 0, 'DAIRY'],
+      ['Hgdz Mnt Chc 16z', 539, 140, 0, 'FROZEN FOOD'],
+      ['Bj Cp Cho Fg Br', 179, 0, 0, 'FROZEN FOOD'],
+      ['Bj Cup Chry Garc', 179, 0, 0, 'FROZEN FOOD'],
+      ['Sprkice Strwbry', 169, 0, 5, 'GROCERY'],
+      ['Org Mgo Lm Sprkw', 169, 0, 5, 'GROCERY'],
+    ])
+    expect(r.charges).toEqual([{ kind: 'fee', label: 'Bag fee', amountCents: 5 }])
+    expect(r.printedTotalCents).toBe(2508)
+    const sum = r.items.reduce((a, i) => a + i.totalCents - i.discountCents + (i.depositCents ?? 0), 0)
+    expect(sum + 5).toBe(2508)
+  })
+
+  it('uses the sections to pick categories', () => {
+    const r = parseReceipt(lines)
+    expect(categorize({ store: '', charges: [], items: r.items }, emptyMemory())).toEqual({
+      categoryId: 'r:groceries',
+      itemCategoryIds: ['i:bakery', 'i:dairy', 'i:frozen', 'i:frozen', 'i:frozen', 'i:drinks', 'i:drinks'],
+    })
   })
 })
 

@@ -1,6 +1,7 @@
 import { Check, Download, HardDrive, Upload } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { PageTitle } from '../components/layouts'
+import { CategorySettings } from './CategorySettings'
 import { Banner, Button, Card, SectionTitle, Segmented, cx } from '../components/ui'
 import { clearAllData, exportBackup, importBackup } from '../db/backup'
 import { ensureSelf } from '../db/people'
@@ -12,6 +13,7 @@ export function Settings() {
     <>
       <PageTitle>Settings</PageTitle>
       <ScannerSettings />
+      <CategorySettings />
       <StorageSettings />
       <BackupSettings />
       <p className="mt-8 text-center text-xs text-stone-500">
@@ -178,7 +180,7 @@ function BackupSettings() {
           size="sm"
           className="justify-self-start"
           onClick={async () => {
-            if (!confirm('Delete all people, groups and receipts on this device? This cannot be undone.')) return
+            if (!confirm('Delete all people, groups and receipts on this device, and restore the starter categories? This cannot be undone.')) return
             await clearAllData()
             await ensureSelf()
             setMessage({ tone: 'ok', text: 'All data deleted.' })

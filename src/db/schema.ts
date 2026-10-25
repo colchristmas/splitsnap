@@ -1,9 +1,16 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Group, Person, Receipt, StoredImage } from '../lib/types'
+import { DEFAULT_CATEGORIES } from '../lib/categories'
+import type { Category, Group, Person, Receipt, StoredImage } from '../lib/types'
 
 export interface Setting {
   key: string
   value: unknown
+}
+
+/** A learned category choice. `key` is "item:<categoryKey>" or "receipt:<categoryKey>". */
+export interface CategoryChoice {
+  key: string
+  categoryId: string
 }
 
 class SplitSnapDB extends Dexie {
@@ -12,6 +19,8 @@ class SplitSnapDB extends Dexie {
   receipts!: EntityTable<Receipt, 'id'>
   images!: EntityTable<StoredImage, 'id'>
   settings!: EntityTable<Setting, 'key'>
+  categories!: EntityTable<Category, 'id'>
+  categoryMemory!: EntityTable<CategoryChoice, 'key'>
 
   constructor() {
     super('splitsnap')
@@ -22,6 +31,11 @@ class SplitSnapDB extends Dexie {
       images: 'id',
       settings: 'key',
     })
+    // v2: categories. Saved receipts are categorized at startup by ensureCategoryRules().
+    this.version(2)
+      .stores({ categories: 'id, kind', categoryMemory: 'key' })
+      .upgrade((tx) => tx.table('categories').bulkAdd(DEFAULT_CATEGORIES))
+    this.on('populate', (tx) => tx.table('categories').bulkAdd(DEFAULT_CATEGORIES))
   }
 }
 

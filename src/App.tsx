@@ -1,12 +1,15 @@
 import { Navigate, createBrowserRouter } from 'react-router'
 import { ReceiptLayout, TabsLayout } from './components/layouts'
 import { Assign } from './screens/Assign'
+import { Combine } from './screens/Combine'
 import { History } from './screens/History'
 import { Home } from './screens/Home'
 import { Items } from './screens/Items'
 import { People } from './screens/People'
+import { PersonPage } from './screens/PersonPage'
 import { Scan } from './screens/Scan'
 import { Settings } from './screens/Settings'
+import { Spending } from './screens/Spending'
 import { Summary } from './screens/Summary'
 
 export const router = createBrowserRouter([
@@ -15,7 +18,10 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Home /> },
       { path: 'history', element: <History /> },
+      { path: 'spending', element: <Spending /> },
       { path: 'people', element: <People /> },
+      { path: 'people/:id', element: <PersonPage /> },
+      { path: 'combine', element: <Combine /> },
       { path: 'settings', element: <Settings /> },
     ],
   },

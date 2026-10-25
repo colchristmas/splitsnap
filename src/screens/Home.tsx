@@ -1,11 +1,13 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Camera, ClipboardPaste, ImageUp, PencilLine } from 'lucide-react'
+import { Camera, ChevronRight, ClipboardPaste, ImageUp, PencilLine } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { ReceiptRow } from '../components/ReceiptRow'
 import { Banner, Button, Card, SectionTitle } from '../components/ui'
+import { useBalances } from '../db/balances'
 import { createReceipt } from '../db/receipts'
 import { db } from '../db/schema'
+import { formatCents } from '../lib/money'
 import { prepareImage } from '../lib/ocr/preprocess'
 
 export function Home() {
@@ -15,6 +17,9 @@ export function Home() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string>()
   const recent = useLiveQuery(() => db.receipts.orderBy('updatedAt').reverse().limit(5).toArray(), []) ?? []
+  const open = [...useBalances().byPerson.values()].map((b) => b.openCents)
+  const owedToMe = open.filter((c) => c > 0).reduce((a, c) => a + c, 0)
+  const iOwe = -open.filter((c) => c < 0).reduce((a, c) => a + c, 0)
 
   const onImage = async (image: Blob | undefined) => {
     if (!image || busy) return
@@ -104,6 +109,22 @@ export function Home() {
           onChange={(e) => void onImage(e.target.files?.[0]).finally(() => (e.target.value = ''))}
         />
       </Card>
+
+      {(owedToMe > 0 || iOwe > 0) && (
+        <Link to="/people" className="mt-3 block">
+          <Card className="flex items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm text-stone-500">Balances</p>
+              <p className="font-semibold">
+                {owedToMe > 0 && `You're owed ${formatCents(owedToMe)}`}
+                {owedToMe > 0 && iOwe > 0 && ' · '}
+                {iOwe > 0 && `You owe ${formatCents(iOwe)}`}
+              </p>
+            </div>
+            <ChevronRight size={18} className="text-stone-400" />
+          </Card>
+        </Link>
+      )}
 
       {recent.length > 0 && (
         <>

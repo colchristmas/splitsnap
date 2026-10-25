@@ -2,9 +2,11 @@ import { X } from 'lucide-react'
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router'
 import { Stepper } from '../components/fields'
+import { CategorySelect } from '../components/CategorySelect'
 import { ActionBar, useReceiptContext } from '../components/layouts'
 import { PeoplePicker } from '../components/PeoplePicker'
 import { Banner, Button, Card, PersonChip, SectionTitle, Segmented } from '../components/ui'
+import { setItemCategory } from '../db/categories'
 import { usePeopleById } from '../db/hooks'
 import { touchPeople } from '../db/people'
 import { updateReceipt } from '../db/receipts'
@@ -101,6 +103,7 @@ export function Assign() {
             item={item}
             people={participants.map((id) => byId.get(id) ?? { id, name: 'Unknown', color: '#a8a29e' })}
             onChange={(change) => changeItem(item.id, change)}
+            onCategory={(id) => void setItemCategory(receipt.id, item.id, id)}
           />
         ))}
       </div>
@@ -118,10 +121,12 @@ function ItemAssign({
   item,
   people,
   onChange,
+  onCategory,
 }: {
   item: Item
   people: Pick<Person, 'id' | 'name' | 'color'>[]
   onChange: (change: (i: Item) => void) => void
+  onCategory: (categoryId: string) => void
 }) {
   const assigned = people.reduce((a, p) => a + (item.shares[p.id] ?? 0), 0)
   const done = item.byUnits ? assigned >= item.quantity : assigned > 0
@@ -136,6 +141,13 @@ function ItemAssign({
         </p>
         <span className="font-semibold tabular-nums">{formatCents(itemNetCents(item))}</span>
       </div>
+      <CategorySelect
+        kind="item"
+        value={item.categoryId}
+        onChange={onCategory}
+        label={`Category of ${item.name}`}
+        className="mt-1 max-w-full px-1.5 py-0.5 text-xs text-stone-600 dark:text-stone-300"
+      />
 
       {item.quantity > 1 && (
         <div className="mt-2">

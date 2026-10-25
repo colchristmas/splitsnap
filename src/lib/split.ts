@@ -34,8 +34,9 @@ export interface SplitResult {
   grandTotalCents: number
 }
 
-export function itemNetCents(item: Item): number {
-  return item.totalCents - item.discountCents
+/** What the item really costs: printed price, minus its coupon, plus its deposit. */
+export function itemNetCents(item: Pick<Item, 'totalCents' | 'discountCents' | 'depositCents'>): number {
+  return item.totalCents - item.discountCents + (item.depositCents ?? 0)
 }
 
 type SplitInput = Pick<Receipt, 'participantIds' | 'items' | 'charges'>

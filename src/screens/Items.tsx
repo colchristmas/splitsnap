@@ -1,9 +1,11 @@
 import { Check, ChevronDown, Image, Plus, Trash2, TriangleAlert } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
+import { CategorySelect } from '../components/CategorySelect'
 import { MoneyField, Stepper, TextField } from '../components/fields'
 import { ActionBar, useReceiptContext } from '../components/layouts'
 import { Banner, Button, Card, Empty, SectionTitle, Segmented, cx } from '../components/ui'
+import { recategorize, rememberCategory, setItemCategory, useCategoriesById } from '../db/categories'
 import { useImageUrl } from '../db/hooks'
 import { updateReceipt } from '../db/receipts'
 import { newId } from '../db/schema'
@@ -24,13 +26,30 @@ export function Items() {
   const photo = useImageUrl(receipt.imageId)
   const [showPhoto, setShowPhoto] = useState(false)
   const result = useMemo(() => split(receipt), [receipt])
+  const categories = useCategoriesById()
   const update = (change: (r: Receipt) => void) => void updateReceipt(receipt.id, change)
 
-  const changeItem = (id: string, patch: Partial<Item>) =>
-    update((r) => {
+  const changeItem = async (id: string, patch: Partial<Item>) => {
+    await updateReceipt(receipt.id, (r) => {
       const item = r.items.find((i) => i.id === id)
       if (item) Object.assign(item, patch)
     })
+    // A new name may mean a new category (unless the user picked one).
+    if ('name' in patch) await recategorize(receipt.id)
+  }
+  const setStore = async (store: string) => {
+    await updateReceipt(receipt.id, (r) => void (r.store = store))
+    await recategorize(receipt.id)
+  }
+  const setReceiptCategory = async (categoryId: string) => {
+    await updateReceipt(receipt.id, (r) => {
+      r.categoryId = categoryId
+      r.categoryManual = true
+    })
+    await rememberCategory('receipt', receipt.store, categoryId)
+    // Items are guessed differently at a restaurant than at a grocery store.
+    await recategorize(receipt.id)
+  }
   const changeCharge = (id: string, patch: Partial<Charge>) =>
     update((r) => {
       const c = r.charges.find((x) => x.id === id)
@@ -51,21 +70,24 @@ export function Items() {
 
   return (
     <>
-      <Card className="grid gap-2">
-        <TextField value={receipt.store} onCommit={(store) => update((r) => void (r.store = store))} placeholder="Store or restaurant" className="w-full text-lg font-semibold" aria-label="Store" />
+      <Card className="flex flex-col gap-2">
+        <div className="flex items-center gap-1">
+          <TextField value={receipt.store} onCommit={(store) => void setStore(store)} placeholder="Store or restaurant" className="flex-1 text-lg font-semibold" aria-label="Store" />
+          {photo && (
+            <Button size="sm" variant="ghost" className="shrink-0" onClick={() => setShowPhoto(!showPhoto)} aria-pressed={showPhoto}>
+              <Image size={16} /> {showPhoto ? 'Hide' : 'Photo'}
+            </Button>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <input
             type="date"
             value={receipt.date}
             onChange={(e) => e.target.value && update((r) => void (r.date = e.target.value))}
-            className="rounded-lg bg-transparent px-2 py-1 text-stone-600 ring-1 ring-stone-300 dark:text-stone-300 dark:ring-stone-700"
+            className="shrink-0 rounded-lg bg-transparent px-2 py-1 text-stone-600 ring-1 ring-stone-300 dark:text-stone-300 dark:ring-stone-700"
             aria-label="Date"
           />
-          {photo && (
-            <Button size="sm" variant="ghost" className="ml-auto" onClick={() => setShowPhoto(!showPhoto)}>
-              <Image size={16} /> {showPhoto ? 'Hide photo' : 'Show photo'}
-            </Button>
-          )}
+          <CategorySelect kind="receipt" value={receipt.categoryId} onChange={(id) => void setReceiptCategory(id)} label="Receipt category" className="min-w-0 flex-1" />
         </div>
         {showPhoto && photo && <img src={photo} alt="Receipt photo" className="mt-1 max-h-[70vh] w-full rounded-lg object-contain" />}
       </Card>
@@ -80,7 +102,9 @@ export function Items() {
               <ItemRow
                 key={item.id}
                 item={item}
-                onChange={(patch) => changeItem(item.id, patch)}
+                categoryName={item.categoryId ? categories.get(item.categoryId)?.name : undefined}
+                onCategory={(id) => void setItemCategory(receipt.id, item.id, id)}
+                onChange={(patch) => void changeItem(item.id, patch)}
                 onDelete={() => update((r) => void (r.items = r.items.filter((i) => i.id !== item.id)))}
               />
             ))}
@@ -164,7 +188,19 @@ function Row({ label, cents, strong }: { label: string; cents: number; strong?: 
   )
 }
 
-function ItemRow({ item, onChange, onDelete }: { item: Item; onChange: (p: Partial<Item>) => void; onDelete: () => void }) {
+function ItemRow({
+  item,
+  categoryName,
+  onCategory,
+  onChange,
+  onDelete,
+}: {
+  item: Item
+  categoryName?: string
+  onCategory: (id: string) => void
+  onChange: (p: Partial<Item>) => void
+  onDelete: () => void
+}) {
   const [open, setOpen] = useState(false)
   return (
     <li className="py-1">
@@ -182,14 +218,20 @@ function ItemRow({ item, onChange, onDelete }: { item: Item; onChange: (p: Parti
           <ChevronDown size={18} className={cx('transition-transform', open && 'rotate-180')} />
         </button>
       </div>
-      {!open && (item.discountCents > 0 || item.taxable) && (
+      {!open && (categoryName || item.discountCents > 0 || item.depositCents || item.taxable) && (
         <p className="flex gap-3 pl-2 text-xs text-stone-500">
+          {categoryName && <span>{categoryName}</span>}
           {item.discountCents > 0 && <span className="text-emerald-700 dark:text-emerald-400">Coupon −{formatCents(item.discountCents)}</span>}
+          {Boolean(item.depositCents) && <span>Deposit +{formatCents(item.depositCents!)}</span>}
           {item.taxable && <span>Taxed</span>}
         </p>
       )}
       {open && (
         <div className="mx-2 mt-1 mb-2 grid gap-2 rounded-xl bg-stone-50 p-3 text-sm dark:bg-stone-950">
+          <div className="flex items-center justify-between gap-2">
+            <span>Category</span>
+            <CategorySelect kind="item" value={item.categoryId} onChange={onCategory} label={`Category of ${item.name}`} />
+          </div>
           <div className="flex items-center justify-between">
             <span>Quantity</span>
             <Stepper value={item.quantity} min={1} max={99} label="units" onChange={(quantity) => onChange({ quantity })} />
@@ -202,6 +244,16 @@ function ItemRow({ item, onChange, onDelete }: { item: Item; onChange: (p: Parti
               placeholder="$0.00"
               className="w-24"
               aria-label="Discount on this item"
+            />
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <span>Bottle deposit</span>
+            <MoneyField
+              value={item.depositCents || undefined}
+              onCommit={(c) => onChange({ depositCents: Math.abs(c ?? 0) })}
+              placeholder="$0.00"
+              className="w-24"
+              aria-label="Bottle deposit on this item"
             />
           </div>
           <label className="flex items-center justify-between">
