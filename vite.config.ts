@@ -86,8 +86,10 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: [{ find: /^onnxruntime-web$/, replacement: fileURLToPath(new URL('./src/lib/ocr/ort-stub.ts', import.meta.url)) }],
   },
-  server: { headers: isolationHeaders },
-  preview: { headers: isolationHeaders },
+  // Fixed ports: old SplitSnap servers are stopped first (scripts/stop-servers.mjs),
+  // so a new one never drifts to 5174, 5175…
+  server: { headers: isolationHeaders, port: 5173, strictPort: true },
+  preview: { headers: isolationHeaders, port: 4173, strictPort: true },
   optimizeDeps: {
     // Pre-bundling breaks the SDK's `new URL('./assets/worker-…', import.meta.url)`.
     exclude: ['@paddleocr/paddleocr-js'],
