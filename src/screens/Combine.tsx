@@ -51,8 +51,9 @@ export function Combine() {
       {leftOut > 0 && (
         <div className="mb-3">
           <Banner tone="warn">
-            {leftOut} {leftOut === 1 ? 'bill is' : 'bills are'} left out because {leftOut === 1 ? 'it has' : 'they have'} items nobody is
-            on yet. Assign them and save the bill to include {leftOut === 1 ? 'it' : 'them'}.
+            {leftOut} {leftOut === 1 ? 'bill is' : 'bills are'} left out because {leftOut === 1 ? "it isn't" : "they aren't"} fully split
+            (an item nobody is on, or no items left). Fix and save {leftOut === 1 ? 'it' : 'them'} to include{' '}
+            {leftOut === 1 ? 'it' : 'them'}.
           </Banner>
         </div>
       )}

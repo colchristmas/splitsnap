@@ -34,6 +34,19 @@ export function Summary() {
     setTimeout(() => setToast(undefined), 2500)
   }
 
+  if (!result.complete && result.unassignedItemIds.length === 0) {
+    return (
+      <Banner tone="warn">
+        <TriangleAlert size={18} className="shrink-0" />
+        <span>
+          This bill has tax or fees but no items to split them over.{' '}
+          <Link to="../items" className="font-semibold underline">
+            Add items
+          </Link>
+        </span>
+      </Banner>
+    )
+  }
   if (result.unassignedItemIds.length > 0) {
     return (
       <Banner tone="warn">

@@ -20,7 +20,7 @@ export interface BillShare {
 export function billShares(receipt: Receipt, meId: string): BillShare[] {
   if (receipt.status !== 'final') return []
   const result = split(receipt)
-  if (result.unassignedItemIds.length > 0) return []
+  if (!result.complete) return []
   const settled = new Set(receipt.settledWith ?? [])
   const share = (personId: string, cents: number): BillShare => ({
     receiptId: receipt.id,

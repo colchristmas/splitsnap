@@ -172,9 +172,13 @@ At restaurants, food defaults to Meals unless it's clearly a drink or dessert. C
 
 A person's balance is the sum of the shares that aren't settled. "Settled" is stored per bill and person, so it can be undone. Combining bills adds up the unsettled shares of the bills you pick.
 
-The numbers are checked by a randomized test (`src/lib/combined.test.ts`). It runs 2,000 random sets of bills with random people, payers, coupons, deposits, tax, tip and fees, and settled bills. It confirms that every bill, every combined total and every balance adds up to the penny.
+The numbers are checked by a randomized test (`src/lib/combined.test.ts`). It runs 2,000 random sets of bills with random people, payers, coupons, deposits, tax, tip and fees, and settled bills. It checks that:
 
-If a saved bill gains an item nobody is on, it goes back to **Draft**, and it stays out of balances and combined bills until you assign the item and save it again.
+- every bill, every combined total and every balance adds up to the penny;
+- each person's part of every tax, tip, fee and discount is within 1¢ of an independently calculated exact share;
+- after random items are deleted, down to the last one, the bill and combined total drop by exactly that item's cost, and the receipt's printed tax and fees stay as they were.
+
+If a saved bill can no longer be fully split, it goes back to **Draft** and stays out of balances and combined bills until you fix it and save again. That happens when an item nobody is on is added, or when every item is deleted but tax or fees remain.
 
 ### Storage
 
