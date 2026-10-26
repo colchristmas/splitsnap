@@ -128,6 +128,43 @@ export function receiptText(
   ].join('\n\n')
 }
 
+export interface CombinedShare {
+  items: ItemShare[]
+  /** Fees, tax, tip and discounts added up by label. */
+  charges: Map<string, number>
+  cents: number
+}
+
+/**
+ * Adds up several bills per person: every item share and charge from each
+ * bill, oldest bill first. Bills with unassigned items are left out (their
+ * total wouldn't match anyone's shares), as they are for balances.
+ */
+export function combineShares(receipts: Receipt[]) {
+  const people = new Map<string, CombinedShare>()
+  const included: Receipt[] = []
+  const skipped: Receipt[] = []
+  let totalCents = 0
+  for (const r of [...receipts].sort((a, b) => a.date.localeCompare(b.date))) {
+    const result = split(r)
+    if (result.unassignedItemIds.length > 0) {
+      skipped.push(r)
+      continue
+    }
+    included.push(r)
+    totalCents += result.grandTotalCents
+    for (const p of result.people) {
+      if (p.items.length === 0 && p.totalCents === 0) continue
+      const acc: CombinedShare = people.get(p.personId) ?? { items: [], charges: new Map(), cents: 0 }
+      acc.items.push(...p.items)
+      for (const c of p.charges) acc.charges.set(c.label, (acc.charges.get(c.label) ?? 0) + c.cents)
+      acc.cents += p.totalCents
+      people.set(p.personId, acc)
+    }
+  }
+  return { people, totalCents, included, skipped }
+}
+
 /**
  * Several bills as one itemized list per person: everyone's items from all the
  * bills under shared category headings, with fees and tax added up by name.
@@ -139,28 +176,13 @@ export function combinedReceiptsText(
   categories: Map<string, Category> = new Map(),
   selfId?: string,
 ): string {
-  type Person = { items: ItemShare[]; charges: Map<string, number>; cents: number }
-  const people = new Map<string, Person>()
-  let total = 0
-  // Oldest bill first, so people appear in a predictable order.
-  for (const r of [...receipts].sort((a, b) => a.date.localeCompare(b.date))) {
-    const result = split(r)
-    total += result.grandTotalCents
-    for (const p of result.people) {
-      if (p.items.length === 0 && p.totalCents === 0) continue
-      const acc: Person = people.get(p.personId) ?? { items: [], charges: new Map(), cents: 0 }
-      acc.items.push(...p.items)
-      for (const c of p.charges) acc.charges.set(c.label, (acc.charges.get(c.label) ?? 0) + c.cents)
-      acc.cents += p.totalCents
-      people.set(p.personId, acc)
-    }
-  }
+  const { people, totalCents, included } = combineShares(receipts)
   // Item ids are unique across bills, so one merged list maps every item to its category.
-  const allItems = { items: receipts.flatMap((r) => r.items) }
+  const allItems = { items: included.flatMap((r) => r.items) }
   const order = [...people.keys()].sort((a, b) => Number(a === selfId) - Number(b === selfId))
-  const header = `Combined: ${receipts.length} ${receipts.length === 1 ? 'bill' : 'bills'} · ${dateRange(receipts.map((r) => r.date))}`
+  const header = `Combined: ${included.length} ${included.length === 1 ? 'bill' : 'bills'} · ${dateRange(included.map((r) => r.date))}`
   return [
-    `${header}\nTotal ${formatCents(total)}`,
+    `${header}\nTotal ${formatCents(totalCents)}`,
     ...order.map((id) => {
       const p = people.get(id)!
       const charges = [...p.charges].filter(([, cents]) => cents !== 0)
