@@ -29,6 +29,11 @@ export interface SplitResult {
   people: PersonSplit[]
   /** Items nobody is on yet (or with units left over); their cost isn't in anyone's total. */
   unassignedItemIds: string[]
+  /**
+   * Every cent of the bill is on someone: all items assigned, and tax/fees had
+   * someone to go to (a bill with charges but no items can't be split).
+   */
+  complete: boolean
   itemsTotalCents: number
   chargesTotalCents: number
   grandTotalCents: number
@@ -100,11 +105,13 @@ export function split(receipt: SplitInput): SplitResult {
 
   const itemsTotalCents = receipt.items.reduce((a, i) => a + itemNetCents(i), 0)
   const chargesTotalCents = receipt.charges.reduce((a, c) => a + c.amountCents, 0)
+  const grandTotalCents = itemsTotalCents + chargesTotalCents
   return {
     people,
     unassignedItemIds,
+    complete: unassignedItemIds.length === 0 && people.reduce((a, p) => a + p.totalCents, 0) === grandTotalCents,
     itemsTotalCents,
     chargesTotalCents,
-    grandTotalCents: itemsTotalCents + chargesTotalCents,
+    grandTotalCents,
   }
 }

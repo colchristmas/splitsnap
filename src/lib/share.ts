@@ -137,8 +137,8 @@ export interface CombinedShare {
 
 /**
  * Adds up several bills per person: every item share and charge from each
- * bill, oldest bill first. Bills with unassigned items are left out (their
- * total wouldn't match anyone's shares), as they are for balances.
+ * bill, oldest bill first. Bills that can't be fully split (an unassigned
+ * item, or tax/fees but no items) are left out, as they are for balances.
  */
 export function combineShares(receipts: Receipt[]) {
   const people = new Map<string, CombinedShare>()
@@ -147,7 +147,7 @@ export function combineShares(receipts: Receipt[]) {
   let totalCents = 0
   for (const r of [...receipts].sort((a, b) => a.date.localeCompare(b.date))) {
     const result = split(r)
-    if (result.unassignedItemIds.length > 0) {
+    if (!result.complete) {
       skipped.push(r)
       continue
     }

@@ -42,9 +42,10 @@ export async function updateReceipt(id: string, change: (r: Receipt) => void) {
     const r = await db.receipts.get(id)
     if (!r) return
     change(r)
-    // A saved bill that now has items nobody is on can't be counted correctly
-    // (balances, combined bills), so it goes back to being a draft until saved again.
-    if (r.status === 'final' && split(r).unassignedItemIds.length > 0) r.status = 'draft'
+    // A saved bill that can no longer be fully split (an item nobody is on, or
+    // every item deleted but tax/fees left) can't be counted correctly in
+    // balances or combined bills, so it goes back to being a draft.
+    if (r.status === 'final' && !split(r).complete) r.status = 'draft'
     r.updatedAt = Date.now()
     await db.receipts.put(r)
   })

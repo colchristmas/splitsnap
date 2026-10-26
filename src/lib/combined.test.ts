@@ -71,58 +71,123 @@ function randomBill(rand: () => number, n: number): Receipt {
   }
 }
 
+/**
+ * Checks one bill's charges independently of the split engine: each person's
+ * part of every tax, tip, fee and discount must be within 1¢ of the exact
+ * fraction (rounding to whole cents can move it by less than a cent).
+ */
+function checkCharges(bill: Receipt) {
+  const r = split(bill)
+  const taxable = new Set(bill.items.filter((i) => i.taxable).map((i) => i.id))
+  const withItems = r.people.filter((p) => p.items.length > 0)
+  for (const charge of bill.charges) {
+    const base = (p: (typeof r.people)[number]) =>
+      Math.max(0, charge.kind === 'tax' && taxable.size > 0 ? p.items.filter((s) => taxable.has(s.itemId)).reduce((a, s) => a + s.cents, 0) : p.itemsCents)
+    const totalBase = withItems.reduce((a, p) => a + base(p), 0)
+    // Proportional falls back to an even split when there's nothing to be proportional to.
+    const proportional = charge.splitMode === 'proportional' && totalBase > 0
+    for (const p of withItems) {
+      const exact = proportional ? (charge.amountCents * base(p)) / totalBase : charge.amountCents / withItems.length
+      const actual = p.charges.find((c) => c.chargeId === charge.id)?.cents ?? 0
+      expect(Math.abs(actual - exact)).toBeLessThan(1)
+    }
+    // And the pieces add up to exactly the charge.
+    expect(r.people.reduce((a, p) => a + (p.charges.find((c) => c.chargeId === charge.id)?.cents ?? 0), 0)).toBe(charge.amountCents)
+  }
+}
+
+/** Every total in a set of bills: per bill, per item, per charge, combined, and balances with me. */
+function checkBills(bills: Receipt[]) {
+  const results = bills.map((b) => split(b))
+  const countable = bills.filter((_, i) => results[i].complete)
+
+  for (const [i, r] of results.entries()) {
+    if (!r.complete) continue
+    // Each bill: shares add up to the bill, and every item's pieces to what it costs.
+    expect(r.people.reduce((a, p) => a + p.totalCents, 0)).toBe(r.grandTotalCents)
+    for (const item of bills[i].items) {
+      const pieces = r.people.flatMap((p) => p.items).filter((s) => s.itemId === item.id)
+      expect(pieces.reduce((a, s) => a + s.cents, 0)).toBe(itemNetCents(item))
+    }
+    checkCharges(bills[i])
+  }
+
+  // The combined list: Total is the sum of the countable bills, and people add up to it.
+  const combined = combineShares(bills)
+  const billsTotal = results.filter((r) => r.complete).reduce((a, r) => a + r.grandTotalCents, 0)
+  expect(combined.skipped.length).toBe(bills.length - countable.length)
+  expect(combined.totalCents).toBe(billsTotal)
+  expect([...combined.people.values()].reduce((a, p) => a + p.cents, 0)).toBe(billsTotal)
+  for (const [id, p] of combined.people) {
+    const fromBills = results.reduce((a, r) => a + (r.complete ? (r.people.find((x) => x.personId === id)?.totalCents ?? 0) : 0), 0)
+    expect(p.cents).toBe(fromBills)
+    const lines = p.items.reduce((a, s) => a + s.cents, 0) + [...p.charges.values()].reduce((a, c) => a + c, 0)
+    expect(lines).toBe(p.cents)
+  }
+
+  // Balances with me, worked out independently from each countable bill.
+  const expected = new Map<string, number>()
+  for (const [i, b] of bills.entries()) {
+    if (!results[i].complete) continue
+    const share = (id: string) => results[i].people.find((p) => p.personId === id)?.totalCents ?? 0
+    const settled = new Set(b.settledWith)
+    if (b.payerId === 'me') {
+      for (const p of results[i].people) {
+        if (p.personId !== 'me' && !settled.has(p.personId)) expected.set(p.personId, (expected.get(p.personId) ?? 0) + p.totalCents)
+      }
+    } else if (b.participantIds.includes('me') && !settled.has(b.payerId)) {
+      expected.set(b.payerId, (expected.get(b.payerId) ?? 0) - share('me'))
+    }
+  }
+  const fromCombine = new Map(combine(bills, 'me').map((p) => [p.personId, p.totalCents]))
+  const fromBalances = new Map([...balances(bills, 'me')].map(([id, b]) => [id, b.openCents]))
+  for (const id of PEOPLE.filter((p) => p !== 'me')) {
+    expect(fromCombine.get(id) ?? 0).toBe(expected.get(id) ?? 0)
+    expect(fromBalances.get(id) ?? 0).toBe(expected.get(id) ?? 0)
+  }
+  return combined
+}
+
 describe('combining bills adds up to the penny (2,000 random sets of bills)', () => {
-  it('holds for every random set', () => {
+  it('holds for every random set, including tax, tip, fees and discounts per person', () => {
     const rand = rng(20261026)
     for (let trial = 0; trial < 2000; trial++) {
       const bills = Array.from({ length: 1 + Math.floor(rand() * 5) }, (_, i) => randomBill(rand, trial * 10 + i))
-      const results = bills.map((b) => split(b))
+      for (const r of bills.map((b) => split(b))) expect(r.complete).toBe(true)
+      checkBills(bills)
+    }
+  })
 
-      // 1. Each bill on its own: every item fully assigned, shares add up to the bill.
-      for (const [i, r] of results.entries()) {
-        expect(r.unassignedItemIds).toEqual([])
-        expect(r.people.reduce((a, p) => a + p.totalCents, 0)).toBe(r.grandTotalCents)
-        // Every item's pieces add up to what the item costs.
-        for (const item of bills[i].items) {
-          const pieces = r.people.flatMap((p) => p.items).filter((s) => s.itemId === item.id)
-          expect(pieces.reduce((a, s) => a + s.cents, 0)).toBe(itemNetCents(item))
+  it('stays correct after deleting items, down to the last one', () => {
+    const rand = rng(31337)
+    let emptied = 0
+    for (let trial = 0; trial < 2000; trial++) {
+      let bills = Array.from({ length: 1 + Math.floor(rand() * 4) }, (_, i) => randomBill(rand, trial * 10 + i))
+      // Delete a few random items one at a time, rechecking everything after each.
+      for (let step = 0; step < 3; step++) {
+        const before = checkBills(bills)
+        const b = Math.floor(rand() * bills.length)
+        if (bills[b].items.length === 0) continue
+        const victim = bills[b].items[Math.floor(rand() * bills[b].items.length)]
+        const wasComplete = split(bills[b]).complete
+        const edited = { ...bills[b], items: bills[b].items.filter((i) => i !== victim) }
+        bills = bills.map((x, i) => (i === b ? edited : x))
+        const after = checkBills(bills)
+        const result = split(edited)
+        // The printed tax, tip and fees stay as they were on the receipt.
+        expect(result.chargesTotalCents).toBe(edited.charges.reduce((a, c) => a + c.amountCents, 0))
+        if (result.complete && wasComplete) {
+          // The bill, and the combined total, drop by exactly what the item cost.
+          expect(before.totalCents - after.totalCents).toBe(itemNetCents(victim))
+        } else if (!result.complete) {
+          // Only possible once the last item is gone but tax/fees remain: the bill is left out, not miscounted.
+          expect(edited.items).toHaveLength(0)
+          expect(after.skipped.map((x) => x.id)).toContain(edited.id)
+          emptied++
         }
-      }
-
-      // 2. The combined list: Total is the sum of the bills, and people add up to it.
-      const combined = combineShares(bills)
-      const billsTotal = results.reduce((a, r) => a + r.grandTotalCents, 0)
-      expect(combined.totalCents).toBe(billsTotal)
-      expect([...combined.people.values()].reduce((a, p) => a + p.cents, 0)).toBe(billsTotal)
-      for (const [id, p] of combined.people) {
-        // A person's combined total is exactly their shares from each bill…
-        const fromBills = results.reduce((a, r) => a + (r.people.find((x) => x.personId === id)?.totalCents ?? 0), 0)
-        expect(p.cents).toBe(fromBills)
-        // …and exactly what their listed lines add up to.
-        const lines = p.items.reduce((a, s) => a + s.cents, 0) + [...p.charges.values()].reduce((a, c) => a + c, 0)
-        expect(lines).toBe(p.cents)
-      }
-
-      // 3. Balances with me, worked out independently from each bill.
-      const expected = new Map<string, number>()
-      for (const [i, b] of bills.entries()) {
-        const share = (id: string) => results[i].people.find((p) => p.personId === id)?.totalCents ?? 0
-        const settled = new Set(b.settledWith)
-        if (b.payerId === 'me') {
-          for (const p of results[i].people) {
-            if (p.personId !== 'me' && !settled.has(p.personId)) expected.set(p.personId, (expected.get(p.personId) ?? 0) + p.totalCents)
-          }
-        } else if (b.participantIds.includes('me') && !settled.has(b.payerId)) {
-          expected.set(b.payerId, (expected.get(b.payerId) ?? 0) - share('me'))
-        }
-      }
-      const fromCombine = new Map(combine(bills, 'me').map((p) => [p.personId, p.totalCents]))
-      const fromBalances = new Map([...balances(bills, 'me')].map(([id, b]) => [id, b.openCents]))
-      for (const id of PEOPLE.filter((p) => p !== 'me')) {
-        expect(fromCombine.get(id) ?? 0).toBe(expected.get(id) ?? 0)
-        expect(fromBalances.get(id) ?? 0).toBe(expected.get(id) ?? 0)
       }
     }
+    expect(emptied).toBeGreaterThan(0) // the "last item deleted" case really was exercised
   })
 
   it('leaves out a bill with an unassigned item instead of miscounting it', () => {
