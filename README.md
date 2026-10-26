@@ -172,6 +172,10 @@ At restaurants, food defaults to Meals unless it's clearly a drink or dessert. C
 
 A person's balance is the sum of the shares that aren't settled. "Settled" is stored per bill and person, so it can be undone. Combining bills adds up the unsettled shares of the bills you pick.
 
+The numbers are checked by a randomized test (`src/lib/combined.test.ts`). It runs 2,000 random sets of bills with random people, payers, coupons, deposits, tax, tip and fees, and settled bills. It confirms that every bill, every combined total and every balance adds up to the penny.
+
+If a saved bill gains an item nobody is on, it goes back to **Draft**, and it stays out of balances and combined bills until you assign the item and save it again.
+
 ### Storage
 
 All data lives in IndexedDB via [Dexie](https://dexie.org): people, groups, receipts, receipt photos, categories and learned category choices. Upgrading from an older version categorizes existing receipts automatically. Export a backup from **Settings → Backup** to keep a copy or move to another device.

@@ -3,13 +3,13 @@ import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { BalanceText } from '../components/BalanceText'
 import { ShareTextBox, useShareDraft } from '../components/ShareTextBox'
-import { Avatar, Button, Card, Empty, SectionTitle } from '../components/ui'
+import { Avatar, Banner, Button, Card, Empty, SectionTitle } from '../components/ui'
 import { markSettled, useBalances } from '../db/balances'
 import { useCategoriesById } from '../db/categories'
 import { usePeopleById } from '../db/hooks'
 import { combine } from '../lib/balances'
 import { formatCents } from '../lib/money'
-import { combinedReceiptsText, dateRange, formatDate, shareText } from '../lib/share'
+import { combinedReceiptsText, combineShares, dateRange, formatDate, shareText } from '../lib/share'
 
 /** Several bills combined into one total per person, to share and settle in one go. */
 export function Combine() {
@@ -22,6 +22,8 @@ export function Combine() {
   const name = (id: string) => people.get(id)?.name ?? 'Someone'
 
   const bills = receipts.filter((r) => ids.includes(r.id))
+  // Bills that went back to draft (or have items nobody is on) aren't counted.
+  const leftOut = ids.length - bills.length + combineShares(bills).skipped.length
   const combined = meId ? combine(bills, meId) : []
   const byId = new Map(bills.map((r) => [r.id, r]))
 
@@ -45,6 +47,15 @@ export function Combine() {
           {bills.length} {bills.length === 1 ? 'bill' : 'bills'} · {dateRange(bills.map((r) => r.date))}
         </p>
       </header>
+
+      {leftOut > 0 && (
+        <div className="mb-3">
+          <Banner tone="warn">
+            {leftOut} {leftOut === 1 ? 'bill is' : 'bills are'} left out because {leftOut === 1 ? 'it has' : 'they have'} items nobody is
+            on yet. Assign them and save the bill to include {leftOut === 1 ? 'it' : 'them'}.
+          </Banner>
+        </div>
+      )}
 
       {combined.length === 0 ? (
         <Empty>{bills.length ? 'Everything on these bills is settled.' : 'No saved bills selected.'}</Empty>

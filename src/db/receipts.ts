@@ -1,4 +1,5 @@
 import type { ParsedReceipt } from '../lib/receipt/parse'
+import { split } from '../lib/split'
 import { DEFAULT_SPLIT_MODE, type Receipt } from '../lib/types'
 import { recategorize } from './categories'
 import { ensureSelf } from './people'
@@ -41,6 +42,9 @@ export async function updateReceipt(id: string, change: (r: Receipt) => void) {
     const r = await db.receipts.get(id)
     if (!r) return
     change(r)
+    // A saved bill that now has items nobody is on can't be counted correctly
+    // (balances, combined bills), so it goes back to being a draft until saved again.
+    if (r.status === 'final' && split(r).unassignedItemIds.length > 0) r.status = 'draft'
     r.updatedAt = Date.now()
     await db.receipts.put(r)
   })
