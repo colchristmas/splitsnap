@@ -8,7 +8,7 @@ import { applyParsed } from '../db/receipts'
 import { db } from '../db/schema'
 import { getSetting } from '../db/settings'
 import { recognize, type OcrProgress } from '../lib/ocr/engine'
-import { prepareImage } from '../lib/ocr/preprocess'
+import { enhanceForOcr, prepareImage } from '../lib/ocr/preprocess'
 import { parseReceipt } from '../lib/receipt/parse'
 
 type State =
@@ -28,7 +28,7 @@ export function Scan() {
     try {
       const image = receipt.imageId ? await db.images.get(receipt.imageId) : undefined
       if (!image) throw new Error('The photo for this receipt is missing.')
-      const lines = await recognize(image.blob, await getSetting('ocrModel'), (progress) =>
+      const lines = await recognize(await enhanceForOcr(image.blob), await getSetting('ocrModel'), (progress) =>
         setState({ kind: 'running', progress }),
       )
       const parsed = parseReceipt(lines)

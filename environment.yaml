@@ -1,0 +1,31 @@
+# Conda environment for SplitSnap.
+#
+# SplitSnap is a Node.js (Vite + React) app, so this environment supplies
+# Node.js and npm rather than Python. The app's npm packages are then
+# installed into node_modules/ by `npm ci`.
+#
+# Setup:
+#   conda env create -f environment.yaml
+#   conda activate splitsnap
+#   npm ci
+#
+# Test:
+#   npm test
+#
+# Run (http://localhost:5173):
+#   npm run dev
+#
+# Update after editing this file:
+#   conda env update -f environment.yaml --prune
+# Remove:
+#   conda env remove -n splitsnap
+name: splitsnap
+channels:
+  - conda-forge
+  # Use conda-forge only. Anaconda's default channels aren't needed and
+  # require accepting their Terms of Service first.
+  - nodefaults
+dependencies:
+  # Vite 8 needs Node 20.19+ or 22.12+. Node 24 is the LTS release that
+  # matches @types/node ^24 in package.json, and it ships with npm.
+  - nodejs=24
