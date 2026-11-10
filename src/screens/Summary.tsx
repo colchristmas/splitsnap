@@ -10,6 +10,7 @@ import { updateReceipt } from '../db/receipts'
 import { formatCents } from '../lib/money'
 import { formatDate, groupByCategory, personText, receiptText, shareLabel, shareText, type CategoryGroup } from '../lib/share'
 import { split, type PersonSplit } from '../lib/split'
+import { AnimatedCents } from '../components/AnimatedCents'
 
 export function Summary() {
   const receipt = useReceiptContext()
@@ -73,7 +74,7 @@ export function Summary() {
         <p className="text-sm text-stone-500">
           {formatDate(receipt.date)} · paid by {name(receipt.payerId)}
         </p>
-        <p className="text-3xl font-bold tabular-nums">{formatCents(result.grandTotalCents)}</p>
+        <AnimatedCents cents={result.grandTotalCents} className="block text-3xl font-bold" />
         <div className="mt-2 grid gap-2">
           {sum === result.grandTotalCents && (
             <Banner tone="ok">
@@ -158,12 +159,12 @@ function PersonCard({
   return (
     <Card>
       <div className="flex items-center gap-3">
-        <Avatar person={{ name, color: color ?? '#a8a29e' }} />
+        <Avatar person={{ name, color: color ?? '#a3a595' }} />
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold">{name}</p>
           <p className="text-sm text-stone-500">{isPayer ? 'Paid the bill' : `Owes ${payerName}`}</p>
         </div>
-        <span className="text-xl font-bold tabular-nums">{formatCents(p.totalCents)}</span>
+        <AnimatedCents cents={p.totalCents} className="text-xl font-bold" />
         {!isPayer && (
           <button type="button" onClick={onShare} className="rounded-full p-2 text-teal-700 hover:bg-teal-50 dark:text-teal-400 dark:hover:bg-stone-800" aria-label={`Share ${name}'s total`}>
             <Share2 size={18} />

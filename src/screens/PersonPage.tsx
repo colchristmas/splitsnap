@@ -9,6 +9,7 @@ import { archivePerson, renamePerson } from '../db/people'
 import { balancesText, combine } from '../lib/balances'
 import { formatCents } from '../lib/money'
 import { formatDate, shareText } from '../lib/share'
+import { AnimatedCents } from '../components/AnimatedCents'
 
 /** One person: what's open between you, every bill you've shared, and settling up. */
 export function PersonPage() {
@@ -62,11 +63,11 @@ export function PersonPage() {
                 <span className="text-stone-500">All settled up</span>
               ) : balance.openCents > 0 ? (
                 <span className="text-emerald-700 dark:text-emerald-400">
-                  {person.name} owes you <strong>{formatCents(balance.openCents)}</strong>
+                  {person.name} owes you <strong><AnimatedCents cents={balance.openCents} /></strong>
                 </span>
               ) : (
                 <span className="text-amber-700 dark:text-amber-400">
-                  You owe {person.name} <strong>{formatCents(-balance.openCents)}</strong>
+                  You owe {person.name} <strong><AnimatedCents cents={-balance.openCents} /></strong>
                 </span>
               )}
             </p>
@@ -98,7 +99,7 @@ export function PersonPage() {
       {shares.length > 0 && (
         <>
           <SectionTitle>Activity</SectionTitle>
-          <Card className="divide-y divide-stone-100 p-0! dark:divide-stone-800">
+          <Card stagger className="divide-y divide-stone-100 p-0! dark:divide-stone-800">
             {shares.map((s) => {
               const r = receiptById.get(s.receiptId)!
               const after = runningAfter.get(s.receiptId) ?? 0

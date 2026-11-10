@@ -9,7 +9,7 @@ export async function ensureSelf(): Promise<Person> {
     const existing = await db.people.filter((p) => Boolean(p.isSelf)).first()
     if (existing) return existing
     const now = Date.now()
-    const me: Person = { id: newId(), name: 'Me', color: '#0f766e', isSelf: true, createdAt: now, lastUsedAt: now }
+    const me: Person = { id: newId(), name: 'Me', color: '#606c38', isSelf: true, createdAt: now, lastUsedAt: now }
     await db.people.add(me)
     return me
   })

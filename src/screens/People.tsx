@@ -1,15 +1,14 @@
-import { ChevronRight, Pencil, Plus, Trash2, Users } from 'lucide-react'
+import { Pencil, Plus, Trash2, Users } from 'lucide-react'
 import { useState } from 'react'
-import { Link } from 'react-router'
 import { BalanceText } from '../components/BalanceText'
 import { TextField } from '../components/fields'
 import { PageTitle } from '../components/layouts'
-import { Avatar, Button, Card, Empty, PersonChip, SectionTitle } from '../components/ui'
+import { Avatar, Button, Card, Empty, PersonChip, SectionTitle, Tile } from '../components/ui'
 import { useBalances } from '../db/balances'
 import { useGroups, usePeople } from '../db/hooks'
 import { deleteGroup, findOrAddPerson, renamePerson, saveGroup } from '../db/people'
-import { formatCents } from '../lib/money'
 import type { Group } from '../lib/types'
+import { AnimatedCents } from '../components/AnimatedCents'
 
 export function People() {
   const people = usePeople().filter((p) => !p.archived)
@@ -42,14 +41,14 @@ export function People() {
 
       {(owedToMe > 0 || iOwe > 0) && (
         <div className="mt-3 grid grid-cols-2 gap-3">
-          <Card className="p-3!">
-            <p className="text-sm text-stone-500">You're owed</p>
-            <p className="text-2xl font-bold">{formatCents(owedToMe)}</p>
-          </Card>
-          <Card className="p-3!">
-            <p className="text-sm text-stone-500">You owe</p>
-            <p className="text-2xl font-bold">{formatCents(iOwe)}</p>
-          </Card>
+          <Tile tone="olive" square={false} className="min-h-28">
+            <p className="text-sm">You're owed</p>
+            <AnimatedCents cents={owedToMe} className="block text-3xl font-bold tracking-tight" />
+          </Tile>
+          <Tile tone="tan" square={false} className="min-h-28">
+            <p className="text-sm">You owe</p>
+            <AnimatedCents cents={iOwe} className="block text-3xl font-bold tracking-tight" />
+          </Tile>
         </div>
       )}
 
@@ -69,32 +68,33 @@ export function People() {
             onChange={(e) => setNewName(e.target.value)}
             placeholder="Add a person"
             autoCapitalize="words"
-            className="w-full rounded-lg bg-stone-100 px-3 py-2 outline-none focus:ring-2 focus:ring-teal-600 dark:bg-stone-800"
+            className="w-full rounded-full bg-stone-100 px-4 py-2 outline-none focus:ring-2 focus:ring-teal-600 dark:bg-stone-800"
           />
           <Button type="submit" variant="primary" size="sm" disabled={!newName.trim()} aria-label="Add person">
             <Plus size={18} />
           </Button>
         </form>
-        {others.length === 0 ? (
-          <Empty>People you add to receipts show up here.</Empty>
-        ) : (
-          <ul className="divide-y divide-stone-100 dark:divide-stone-800">
-            {others.map((p) => {
-              const b = byPerson.get(p.id)
-              return (
-                <li key={p.id}>
-                  <Link to={`/people/${p.id}`} className="flex items-center gap-3 py-2.5 pr-1 pl-1">
-                    <Avatar person={p} />
-                    <span className="min-w-0 flex-1 truncate font-medium">{p.name}</span>
-                    {b && <BalanceText cents={b.openCents} className="text-sm" />}
-                    <ChevronRight size={18} className="shrink-0 text-stone-400" />
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
-        )}
       </Card>
+      {others.length === 0 ? (
+        <Empty>People you add to receipts show up here.</Empty>
+      ) : (
+        <ul data-stagger className="mt-3 grid grid-cols-2 gap-3">
+          {others.map((p) => {
+            const b = byPerson.get(p.id)
+            return (
+              <li key={p.id}>
+                <Tile to={`/people/${p.id}`}>
+                  <Avatar person={p} size="lg" />
+                  <div className="min-w-0">
+                    <p className="truncate text-lg font-semibold">{p.name}</p>
+                    {b ? <BalanceText cents={b.openCents} className="text-sm" /> : <span className="text-sm text-stone-500">No bills yet</span>}
+                  </div>
+                </Tile>
+              </li>
+            )
+          })}
+        </ul>
+      )}
 
       <SectionTitle
         action={
@@ -115,7 +115,7 @@ export function People() {
             onChange={(e) => setEditing({ ...editing, name: e.target.value })}
             placeholder="Group name, e.g. Roommates"
             autoFocus
-            className="w-full rounded-lg bg-stone-100 px-3 py-2 outline-none focus:ring-2 focus:ring-teal-600 dark:bg-stone-800"
+            className="w-full rounded-full bg-stone-100 px-4 py-2 outline-none focus:ring-2 focus:ring-teal-600 dark:bg-stone-800"
           />
           <div className="flex flex-wrap gap-2">
             {people.map((p) => {
@@ -156,32 +156,36 @@ export function People() {
       {groups.length === 0 && !editing ? (
         <Empty>Save a group like “Roommates” to add everyone in one tap.</Empty>
       ) : (
-        <div className="grid gap-2">
+        <div data-stagger className="grid grid-cols-2 gap-3">
           {groups.map((g) => (
-            <Card key={g.id} className="flex items-center gap-3">
-              <Users size={20} className="shrink-0 text-stone-400" />
-              <div className="min-w-0 flex-1">
-                <p className="font-medium">{g.name}</p>
-                <div className="mt-1 flex -space-x-1.5">
+            <Tile key={g.id} tone="olive" square={false} className="min-h-36">
+              <div className="flex items-start justify-between">
+                <Users size={22} />
+                <div className="-mt-1.5 -mr-1.5 flex">
+                  <button type="button" onClick={() => setEditing(g)} className="rounded-full p-1.5 hover:bg-white/15" aria-label={`Edit ${g.name}`}>
+                    <Pencil size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm(`Delete the group “${g.name}”? The people stay saved.`)) void deleteGroup(g.id)
+                    }}
+                    className="rounded-full p-1.5 hover:bg-white/15"
+                    aria-label={`Delete ${g.name}`}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-lg font-semibold">{g.name}</p>
+                <div className="mt-1.5 flex -space-x-1.5">
                   {g.memberIds.map((id) => (
                     <Avatar key={id} person={people.find((p) => p.id === id)} size="sm" />
                   ))}
                 </div>
               </div>
-              <button type="button" onClick={() => setEditing(g)} className="p-2 text-stone-400 hover:text-teal-700" aria-label={`Edit ${g.name}`}>
-                <Pencil size={18} />
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (confirm(`Delete the group “${g.name}”? The people stay saved.`)) void deleteGroup(g.id)
-                }}
-                className="p-2 text-stone-400 hover:text-red-600"
-                aria-label={`Delete ${g.name}`}
-              >
-                <Trash2 size={18} />
-              </button>
-            </Card>
+            </Tile>
           ))}
         </div>
       )}

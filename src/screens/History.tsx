@@ -3,8 +3,8 @@ import { Layers, Search, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { PageTitle } from '../components/layouts'
-import { ReceiptRow } from '../components/ReceiptRow'
-import { Button, Card, Empty, cx } from '../components/ui'
+import { ReceiptTile } from '../components/ReceiptTile'
+import { Button, Empty, cx } from '../components/ui'
 import { useCategories } from '../db/categories'
 import { usePeopleById } from '../db/hooks'
 import { deleteReceipt } from '../db/receipts'
@@ -65,8 +65,8 @@ export function History() {
         History
       </PageTitle>
       {selected && <p className="-mt-2 mb-3 text-sm text-stone-500">Pick saved bills to combine into one total per person.</p>}
-      <label className="mb-3 flex items-center gap-2 rounded-xl bg-white px-3 py-2.5 ring-1 ring-stone-300 focus-within:ring-2 focus-within:ring-teal-600 dark:bg-stone-900 dark:ring-stone-700">
-        <Search size={18} className="text-stone-400" />
+      <label className="mb-3 flex items-center gap-2 rounded-full bg-white/90 px-4 py-2.5 shadow-warm ring-1 ring-teal-200 focus-within:ring-2 focus-within:ring-teal-600 dark:bg-stone-900 dark:shadow-none dark:ring-stone-700">
+        <Search size={18} className="text-teal-600" />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -86,8 +86,8 @@ export function History() {
               className={cx(
                 'shrink-0 rounded-full px-3 py-1 text-sm font-medium ring-1',
                 categoryId === c.id
-                  ? 'bg-teal-700 text-white ring-transparent'
-                  : 'bg-white text-stone-700 ring-stone-300 dark:bg-stone-900 dark:text-stone-300 dark:ring-stone-700',
+                  ? 'bg-teal-400 font-semibold text-stone-900 ring-transparent'
+                  : 'bg-white/90 text-stone-700 ring-teal-200 dark:bg-stone-900 dark:text-stone-300 dark:ring-stone-700',
               )}
             >
               {c.name}
@@ -99,31 +99,29 @@ export function History() {
       {shown.length === 0 ? (
         <Empty>{receipts.length === 0 ? 'No receipts yet.' : 'Nothing matches.'}</Empty>
       ) : (
-        <Card className="divide-y divide-stone-100 p-0! dark:divide-stone-800">
-          {shown.map((r) => (
-            <div key={r.id} className="flex items-center">
-              <div className="min-w-0 flex-1">
-                <ReceiptRow receipt={r} onSelect={selected ? () => toggle(r.id) : undefined} selected={selected?.has(r.id)} />
-              </div>
+        <div data-stagger className="grid grid-cols-2 gap-3">
+          {shown.map((r, i) => (
+            <div key={r.id} className="relative">
+              <ReceiptTile receipt={r} index={i} onSelect={selected ? () => toggle(r.id) : undefined} selected={selected?.has(r.id)} />
               {!selected && (
                 <button
                   type="button"
                   onClick={() => {
                     if (confirm(`Delete “${r.store || 'Untitled receipt'}”? This can't be undone.`)) void deleteReceipt(r.id)
                   }}
-                  className="p-3 text-stone-400 hover:text-red-600"
+                  className="absolute top-2.5 right-2.5 rounded-full bg-white/80 p-1.5 text-stone-500 backdrop-blur hover:text-red-600 dark:bg-stone-950/60 dark:text-stone-300"
                   aria-label={`Delete ${r.store || 'receipt'}`}
                 >
-                  <Trash2 size={18} />
+                  <Trash2 size={16} />
                 </button>
               )}
             </div>
           ))}
-        </Card>
+        </div>
       )}
 
       {selected && selected.size > 0 && (
-        <div className="fixed inset-x-0 px-4" style={{ bottom: 'calc(4.25rem + env(safe-area-inset-bottom))' }}>
+        <div className="fixed inset-x-0 px-4" style={{ bottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
           <div className="mx-auto max-w-lg">
             <Button variant="primary" size="lg" className="shadow-lg" onClick={() => navigate(`/combine?ids=${[...selected].join(',')}`)}>
               <Layers size={20} /> Combine {selected.size} {selected.size === 1 ? 'bill' : 'bills'}

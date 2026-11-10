@@ -44,7 +44,7 @@ The first start also runs `npm run setup:ocr`. That downloads the OCR models (~3
 npm run dev:phone
 ```
 
-1. Vite prints several `Network:` addresses. Open the one on your Wi-Fi interface (usually labelled `en0`, e.g. `https://10.0.0.198:5173/`) on your phone.
+1. Open https://localhost:5173 on your computer: a small box in the top-right corner shows a QR code of your Wi-Fi address. Scan it with your phone's camera. (Or open one of the `Network:` addresses Vite prints, usually the one on your Wi-Fi interface, e.g. `https://10.0.0.198:5173/`. If the QR code doesn't open, tap **Try address 2 of 3** in the box.)
 2. The certificate is self-signed, so the browser will warn you. Choose **Show Details → visit this website** (Safari) or **Advanced → Proceed** (Chrome).
 3. Optionally, install it: **Share → Add to Home Screen** on iPhone, or **⋮ → Install app** on Android.
 

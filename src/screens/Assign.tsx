@@ -101,7 +101,7 @@ export function Assign() {
           <ItemAssign
             key={item.id}
             item={item}
-            people={participants.map((id) => byId.get(id) ?? { id, name: 'Unknown', color: '#a8a29e' })}
+            people={participants.map((id) => byId.get(id) ?? { id, name: 'Unknown', color: '#a3a595' })}
             onChange={(change) => changeItem(item.id, change)}
             onCategory={(id) => void setItemCategory(receipt.id, item.id, id)}
           />
