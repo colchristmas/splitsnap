@@ -1,0 +1,8 @@
+# Cloudflare Pages response headers (copied to dist/ by the build).
+# Cross-origin isolation is required for the threaded, WebGPU-capable OCR
+# scanner; keep these in sync with isolationHeaders in vite.config.ts.
+# HSTS keeps a custom domain on HTTPS (*.pages.dev is HTTPS-only already).
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+  Strict-Transport-Security: max-age=31536000

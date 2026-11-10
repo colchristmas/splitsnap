@@ -9,6 +9,8 @@ import { Banner, SectionTitle, Tile } from '../components/ui'
 import { useBalances } from '../db/balances'
 import { createReceipt } from '../db/receipts'
 import { db } from '../db/schema'
+import { getSetting } from '../db/settings'
+import { prepareEngine } from '../lib/ocr/engine'
 import { prepareImage } from '../lib/ocr/preprocess'
 
 export function Home() {
@@ -21,6 +23,10 @@ export function Home() {
   const open = [...useBalances().byPerson.values()].map((b) => b.openCents)
   const owedToMe = open.filter((c) => c > 0).reduce((a, c) => a + c, 0)
   const iOwe = -open.filter((c) => c < 0).reduce((a, c) => a + c, 0)
+
+  // Starts downloading the scanner while the camera or photo picker is open.
+  // Scan shows the same download, and retries if this one fails.
+  const warmUpScanner = () => void getSetting('ocrModel').then((m) => prepareEngine(m)).catch(() => {})
 
   const onImage = async (image: Blob | undefined) => {
     if (!image || busy) return
@@ -77,11 +83,11 @@ export function Home() {
       </header>
 
       <div className="grid grid-cols-2 gap-3">
-        <Tile tone="copper" square={false} className="col-span-2 min-h-44" disabled={busy} onClick={() => camera.current?.click()}>
+        <Tile tone="copper" square={false} className="col-span-2 min-h-44" disabled={busy} onClick={() => (warmUpScanner(), camera.current?.click())}>
           <Camera size={36} strokeWidth={1.75} />
           <span className="text-3xl font-bold tracking-tight">Take a photo</span>
         </Tile>
-        <Tile tone="olive" disabled={busy} onClick={() => upload.current?.click()}>
+        <Tile tone="olive" disabled={busy} onClick={() => (warmUpScanner(), upload.current?.click())}>
           <ImageUp size={30} strokeWidth={1.75} />
           <span className="text-xl leading-tight font-semibold">Upload a photo</span>
         </Tile>

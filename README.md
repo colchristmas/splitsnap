@@ -53,7 +53,7 @@ HTTPS is required on the phone because browsers only allow the camera and the fa
 ### 5. Try it
 
 1. **People tab:** rename "Me" to your name so shared summaries read well.
-2. **Home → Take a photo**, **Upload a photo** or **Paste a screenshot**. On a computer you can also press ⌘V / Ctrl+V on the Home screen. The first scan downloads the scanner once (31 MB), and later scans take a few seconds.
+2. **Home → Take a photo**, **Upload a photo** or **Paste a screenshot**. On a computer you can also press ⌘V / Ctrl+V on the Home screen. The first scan downloads the scanner once (about 35–40 MB over the network with the default model), and later scans take a few seconds. The download starts as soon as you tap Take or Upload, while you're still picking the photo.
 3. **1. Items:** fix any misread names or prices. Tap ⌄ on an item for quantity, coupon and "taxed". Check that the total matches the receipt.
 4. **2. People:**
    - Add people. New names are saved automatically, and saved people and groups are one tap away.
@@ -74,6 +74,7 @@ No receipt handy? **Enter items by hand** on the Home screen works the same way.
 | `npm test` | Run the unit tests (split engine, receipt parser, share text) |
 | `npm run build` | Type-check and build the production site into `dist/` |
 | `npm run preview` | Serve the production build at http://localhost:4173 (with the service worker) |
+| `npm run deploy` | Build and upload the site to Cloudflare Pages (see [Deploying](#deploying)) |
 | `npm run setup:ocr` | Re-download the OCR models / runtime (runs automatically before `dev` and `build`) |
 | `npm run lint` | Lint with Oxlint |
 
@@ -138,7 +139,13 @@ There are two models; you can switch in **Settings → Scanner**:
 | Accurate: PP-OCRv6 small (default) | ~31 MB | Best accuracy in testing |
 | Fast: PP-OCRv6 tiny | ~6 MB | About 3× faster, with a few more misreads |
 
-`src/lib/ocr/engine.ts` downloads the models with a progress bar and keeps them in Cache Storage.
+`src/lib/ocr/engine.ts` is the scanner loader. It fetches everything the scanner needs, in parallel and with one progress bar: the two model files, the OCR worker (11.3 MB) and the ONNX Runtime WASM (25 MB). It starts on the first scan, when you tap Take or Upload, or from **Settings → Download now**.
+
+- The progress bar uses file sizes measured at build time, so it stays accurate when the host compresses downloads.
+- The models are kept in Cache Storage by `engine.ts`, and the worker and runtime by the service worker. A second scan, or a switch to the other model, only downloads what's missing.
+- With Accurate, the first scan is about 68 MB of files, roughly 35–40 MB over the network once compressed. With Fast it's about 43 MB, roughly 15 MB.
+
+The SDK also imports OpenCV (10 MB) and Clipper on the main thread, but only uses them when it runs without its worker. SplitSnap always uses the worker, so `src/lib/ocr/sdk-main-thread-stub.ts` replaces them in the build, the same way `ort-stub.ts` does for ONNX Runtime.
 
 ### Splitting
 
@@ -203,23 +210,48 @@ src/
   lib/balances.ts              balances with each person, combining bills (+ tests)
   lib/share.ts                 share text, Web Share / clipboard (+ tests)
   lib/receipt/parse.ts         OCR boxes → items/charges (+ tests and real OCR fixtures)
-  lib/ocr/engine.ts            model download/caching, PaddleOCR worker
+  lib/ocr/engine.ts            scanner loader (download with progress, caching), PaddleOCR worker
+  lib/ocr/*-stub.ts            keep the SDK's unused main-thread ORT, OpenCV and Clipper out of the build
   lib/ocr/preprocess.ts        photo orientation, rotation, downscaling
-vite.config.ts                 isolation headers, PWA, dev serving of ORT files, LAN HTTPS
+public/_headers                Cloudflare Pages response headers (isolation, HSTS)
+vite.config.ts                 isolation headers, PWA, stub aliases, scanner file sizes, dev serving of ORT files, LAN HTTPS
 ```
 
 ## Deploying
 
-`npm run build` outputs a static site in `dist/` (~84 MB, mostly OCR models). Any static host can serve it for free. The one requirement is that **every response** carries these headers:
+SplitSnap is a static site: the host only serves files, and the scanner runs on each phone. It's set up for **Cloudflare Pages**, which is free, has unlimited bandwidth and includes HTTPS.
 
-```
-Cross-Origin-Opener-Policy: same-origin
-Cross-Origin-Embedder-Policy: require-corp
+### First time
+
+1. Create a free Cloudflare account at [dash.cloudflare.com](https://dash.cloudflare.com). You don't need a credit card or a domain.
+2. In `splitsnap/`, run `npx wrangler login` and approve access in the browser window that opens.
+
+### Each deploy
+
+```bash
+npm run deploy
 ```
 
-- **Cloudflare / Netlify:** add a `public/_headers` file that applies both headers to `/*`. Cloudflare's per-file limit is 25 MiB, and the largest file (the ORT WASM, about 25.0 MB) fits.
-- **Vercel:** add a `headers` entry for `/(.*)` in `vercel.json`.
-- **GitHub Pages:** it can't set headers. Avoid it.
+This builds `dist/` on your computer (~72 MB, mostly OCR models) and uploads it.
+
+- The first run creates the `splitsnap` project and prints its address, such as `https://splitsnap.pages.dev`. If that name is taken, Cloudflare picks a variant.
+- Each deploy also gets its own preview address.
+
+Building on your computer reuses the models already in `public/models/`. A build on Cloudflare from a connected Git repo would download them from Beijing every time.
+
+### What the host has to provide
+
+- **Headers on every response.** `public/_headers` is copied into `dist/` and sets:
+  - `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`, for the fast, multi-threaded scanner. Without them, scanning is very slow or fails (see [Troubleshooting](#troubleshooting)).
+  - `Strict-Transport-Security`, which keeps a custom domain on HTTPS.
+- **HTTPS.** The camera, the service worker and the scanner's threads only work on secure pages.
+  - Cloudflare issues and renews the certificate automatically.
+  - `*.pages.dev` is always HTTPS: the whole `.dev` domain is on browsers' HTTPS-only list.
+  - If you add your own domain, also turn on **SSL/TLS → Edge Certificates → Always Use HTTPS** in the Cloudflare dashboard.
+- **Files up to 25 MiB.** That's Cloudflare's per-file limit. The largest file, the ORT WASM (25.0 MB), is about 1.2 MB under it, so an ONNX Runtime upgrade could push it over.
+- **Deep links.** Cloudflare Pages serves `index.html` for unknown paths when there's no `404.html`, so links like `/r/…/items` work.
+
+Other hosts work if they can set the headers on every response: Netlify reads the same `_headers` file, and Vercel uses `headers` in `vercel.json`. GitHub Pages can't set headers.
 
 Everything the app loads is served by the app itself, so no other cross-origin setup is needed.
 

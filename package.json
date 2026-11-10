@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
+    "deploy": "npm run build && npx wrangler pages deploy dist --project-name splitsnap",
     "test": "vitest run",
     "test:watch": "vitest",
     "dev:phone": "vite --host --mode phone",
