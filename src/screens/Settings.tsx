@@ -1,6 +1,11 @@
-import { Check, Download, HardDrive, Upload } from 'lucide-react'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { Check, ChevronRight, Download, HardDrive, Upload, UserRound } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router'
 import { PageTitle } from '../components/layouts'
+import { accountsAvailable } from '../sync/remote'
+import { describeStatus, useSyncStatus } from '../sync/runner'
+import { syncState } from '../sync/store'
 import { CategorySettings } from './CategorySettings'
 import { Banner, Button, Card, SectionTitle, Segmented, cx } from '../components/ui'
 import { clearAllData, exportBackup, importBackup } from '../db/backup'
@@ -9,16 +14,43 @@ import { setSetting, useSetting } from '../db/settings'
 import { OCR_MODELS, isScannerDownloaded, prepareEngine, pruneModels, type OcrModel, type OcrProgress } from '../lib/ocr/engine'
 
 export function Settings() {
+  const signedIn = useLiveQuery(async () => Boolean(await syncState.keys.get('current')), [])
   return (
     <>
       <PageTitle>Settings</PageTitle>
+      <AccountSettings />
       <ScannerSettings />
       <CategorySettings />
       <StorageSettings />
       <BackupSettings />
       <p className="mt-8 text-center text-xs text-stone-500">
-        SplitSnap keeps everything on this device. Nothing is uploaded anywhere.
+        {signedIn
+          ? 'Synced to your account. Everything is encrypted on this device before upload, so only you can read it.'
+          : 'SplitSnap keeps everything on this device. Nothing is uploaded anywhere.'}
       </p>
+    </>
+  )
+}
+
+function AccountSettings() {
+  const keys = useLiveQuery(() => syncState.keys.get('current'), [])
+  const status = useSyncStatus()
+  if (!accountsAvailable) return null
+  return (
+    <>
+      <SectionTitle>Account</SectionTitle>
+      <Link to="/account" className="block">
+        <Card className="flex items-center gap-3">
+          <UserRound size={20} className="shrink-0 text-teal-700 dark:text-teal-400" />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-medium">{keys ? keys.email : 'Sign in or create an account'}</span>
+            <span className="block text-sm text-stone-600 dark:text-stone-400">
+              {keys ? describeStatus(status) : 'Sync your receipts across devices, encrypted end to end.'}
+            </span>
+          </span>
+          <ChevronRight size={18} className="shrink-0 text-stone-400" />
+        </Card>
+      </Link>
     </>
   )
 }

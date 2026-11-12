@@ -1,5 +1,6 @@
 import { DEFAULT_CATEGORIES } from '../lib/categories'
 import type { Category, Group, Person, Receipt } from '../lib/types'
+import { remapGroup, remapReceipt, replaceId } from './remap'
 import { db, type CategoryChoice } from './schema'
 
 interface BackupFile {
@@ -90,18 +91,10 @@ export async function importBackup(text: string, mode: 'merge' | 'replace') {
     const localSelf = await db.people.filter((p) => Boolean(p.isSelf)).first()
     const theirSelf = people.find((p) => p.isSelf)
     if (localSelf && theirSelf && localSelf.id !== theirSelf.id) {
-      const swap = (id: string) => (id === theirSelf.id ? localSelf.id : id)
+      const swap = replaceId(theirSelf.id, localSelf.id)
       people = people.filter((p) => p !== theirSelf)
-      groups = groups.map((g) => ({ ...g, memberIds: g.memberIds.map(swap) }))
-      receipts = receipts.map((r) => ({
-        ...r,
-        payerId: swap(r.payerId),
-        participantIds: r.participantIds.map(swap),
-        items: r.items.map((i) => ({
-          ...i,
-          shares: Object.fromEntries(Object.entries(i.shares).map(([k, v]) => [swap(k), v])),
-        })),
-      }))
+      groups = groups.map((g) => remapGroup(g, swap))
+      receipts = receipts.map((r) => remapReceipt(r, swap))
     }
 
     await db.people.bulkPut(people)

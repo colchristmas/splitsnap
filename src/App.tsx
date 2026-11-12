@@ -1,5 +1,6 @@
 import { Navigate, createBrowserRouter } from 'react-router'
 import { ReceiptLayout, TabsLayout } from './components/layouts'
+import { Account } from './screens/Account'
 import { Assign } from './screens/Assign'
 import { Combine } from './screens/Combine'
 import { History } from './screens/History'
@@ -23,6 +24,7 @@ export const router = createBrowserRouter([
       { path: 'people/:id', element: <PersonPage /> },
       { path: 'combine', element: <Combine /> },
       { path: 'settings', element: <Settings /> },
+      { path: 'account', element: <Account /> },
     ],
   },
   {
