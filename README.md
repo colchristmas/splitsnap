@@ -2,10 +2,10 @@
 
 Snap a receipt, tap who had what, and share everyone's total.
 
-SplitSnap is a mobile-first web app for splitting shopping and restaurant receipts. It reads the receipt **on your device**: there's no cloud OCR, no account and no running cost. Your saved people and past receipts stay in your browser.
+SplitSnap is a mobile-first web app for splitting shopping and restaurant receipts. It reads the receipt **on your device**: there's no cloud OCR and no running cost. Your saved people and past receipts stay in your browser. An account is optional: sign in to sync across your devices, encrypted end to end so the server can't read anything.
 
 > **Status: working end to end, still being tested.**
-> - **Working:** scan, review, assign, split, share, history, people/groups, backup, installable PWA.
+> - **Working:** scan, review, assign, split, share, history, people/groups, backup, installable PWA, optional accounts with encrypted sync.
 > - **Known issue:** scanning while offline doesn't work yet; the app itself does load offline.
 > - **Next:** real-world testing with iPhone receipt photos, then deploying. See [Roadmap](#roadmap).
 
@@ -71,7 +71,7 @@ No receipt handy? **Enter items by hand** on the Home screen works the same way.
 | Command | What it does |
 | --- | --- |
 | `npm run stop` | Stop every SplitSnap server (including paused ones) and free their ports |
-| `npm test` | Run the unit tests (split engine, receipt parser, share text) |
+| `npm test` | Run the unit tests (split engine, receipt parser, share text, encryption, sync) |
 | `npm run build` | Type-check and build the production site into `dist/` |
 | `npm run preview` | Serve the production build at http://localhost:4173 (with the service worker) |
 | `npm run deploy` | Build and upload the site to Cloudflare Pages (see [Deploying](#deploying)) |
@@ -85,6 +85,8 @@ No receipt handy? **Enter items by hand** on the Home screen works the same way.
 - **The phone can't reach the dev server**: make sure the phone and computer are on the same Wi-Fi, and that your firewall allows incoming connections to Node.
 - **"Port 5173 is in use"**: a program other than SplitSnap is using it. SplitSnap's own old servers are stopped automatically. Run `lsof -i :5173` to see what's holding the port.
 - **Seeing an old version after an update**: the service worker updates itself on the next load. Reload once more, or clear the site's data.
+- **Sync says "Can't reach the server" while you're online**: Supabase pauses free projects after a week without use. Restore it from the Supabase dashboard. Changes made meanwhile are kept on the device and sync once it's back.
+- **No Account section in Settings**: the build has no Supabase settings. See [Accounts and sync (optional)](#accounts-and-sync-optional).
 
 ---
 
@@ -120,6 +122,11 @@ No receipt handy? **Enter items by hand** on the Home screen works the same way.
 - **History and backup.** Searchable history with photos and category filters, plus JSON backup export/import (merge or replace).
 - **Item and price search.** History's search box also lists matching items with their price, store and date, and the lowest–highest price, so you can compare stores. Type words (`milk`, `costco milk`), a price (`4.99`; `4` finds $4.00–$4.99), a range (`5-10`, `$5 to $10`), a limit (`under 5`, `>20`), or a mix (`milk under 5`). A price filters items by their price and bills by their total.
 - **Exact to the penny.** Integer cents and largest-remainder rounding mean shares always add up to the total.
+- **Optional account and sync.** Sign in on each of your devices, and your people, receipts, photos and categories stay in step.
+  - Everything is encrypted on the device before upload. The server stores only ciphertext and never sees your password.
+  - You get a recovery key when you create the account. With it, a forgotten password costs nothing; without it, the copy in your account can't be recovered.
+  - The app still works offline, and changes sync when you're back.
+  - Without an account, nothing changes: everything stays on the device.
 
 ## How it works
 
@@ -200,7 +207,49 @@ If a saved bill can no longer be fully split, it goes back to **Draft** and stay
 
 All data lives in IndexedDB via [Dexie](https://dexie.org): people, groups, receipts, receipt photos, categories and learned category choices. Upgrading from an older version categorizes existing receipts automatically. Export a backup from **Settings → Backup** to keep a copy or move to another device.
 
-> **iPhone:** Safari may clear data for web apps that aren't installed and haven't been opened for about 7 days. Add SplitSnap to your Home Screen and export a backup now and then.
+> **iPhone:** Safari may clear data for web apps that aren't installed and haven't been opened for about 7 days. Add SplitSnap to your Home Screen and export a backup now and then, or sign in so your account keeps a copy.
+
+### Accounts and sync
+
+The app keeps reading and writing IndexedDB exactly as it does without an account. `src/sync/` sits underneath: it encrypts what changed, uploads it, and downloads other devices' changes into IndexedDB.
+
+**Keys** (`src/sync/crypto.ts`, Web Crypto only):
+
+- Your password is stretched with PBKDF2-SHA256 (600,000 rounds, salted with your email), then split with HKDF into two keys:
+  - an **auth secret**, which is what Supabase receives and checks as your "password", so it never sees the real one;
+  - a **wrap key**.
+- The **vault key** is 256 random bits, made on your first sign-in. Everything is encrypted under it. The server stores it twice, wrapped by the wrap key and by the **recovery key** (160 random bits, shown once as 8 groups of 4 characters).
+- From the vault key, HKDF derives the keys sync uses day to day. They're kept in IndexedDB as non-extractable `CryptoKey`s, so the app doesn't ask for your password each time you open it.
+
+**Records:**
+
+- Each record is AES-256-GCM-encrypted JSON.
+- Its name on the server is an HMAC of its table and id, so the server doesn't see which table a row belongs to, or its id.
+- That name is also bound into the encryption, so the server can't swap two records.
+- Photos are encrypted the same way and kept in a private storage bucket.
+- Your data on the device itself is stored the same way as without an account: unencrypted, in the browser's storage.
+
+**What the server can see:** your email, how many records and photos you have, their sizes, and when they change. It can't see names, stores, items, amounts or photos.
+
+**Syncing** (`src/sync/engine.ts`, `runner.ts`):
+
+- **When:** about 2 seconds after edits settle, when you open the app, when you come back online, and every 5 minutes while the app is open.
+- **Push:** the engine compares each record with what was last synced, and sends what changed plus deletions.
+- **Pull:** it fetches every row written since the last pull; the server numbers writes in order.
+- **Conflicts:** if the same record changed on two devices, the version that reached the server first wins. The exception is a receipt edited later on this device, which keeps its newer edit.
+- **Photos** never change once saved: rotating one saves a new photo, so a photo is uploaded once and deleted once.
+- **Not synced:** settings such as the scanner model belong to each device.
+
+**Signing in on a device that already has data** asks you to choose:
+
+- **Keep both:** this device's "Me" and people with the same name merge into the account's.
+- **Use my account's data only:** this device's data is replaced with the account's.
+
+**Signing out** removes the data from that device; it stays in the account. **Deleting the account** removes everything on the server; the device keeps its own copy.
+
+**Not yet supported:** changing the account's email. The email is part of the key derivation.
+
+`src/sync/engine.test.ts` runs two simulated devices against an in-memory server. It covers edits, deletes, photos, conflicts, going offline and linking a device. `crypto.test.ts` covers the keys, wrapping and the recovery key.
 
 ## Project layout
 
@@ -223,6 +272,16 @@ src/
   lib/ocr/engine.ts            scanner loader (download with progress, caching), PaddleOCR worker
   lib/ocr/*-stub.ts            keep the SDK's unused main-thread ORT, OpenCV and Clipper out of the build
   lib/ocr/preprocess.ts        photo orientation, rotation, downscaling
+  db/remap.ts                  person-id remapping, for merging two copies of the data (backups, sign-in)
+  sync/crypto.ts               end-to-end encryption: password keys, vault, recovery key, records (+ tests)
+  sync/engine.ts               two-way sync and device linking, against a Remote interface (+ tests)
+  sync/remote.ts               Supabase client, Remote implementation, vault rows
+  sync/account.ts              sign up/in, recovery key, password change/reset, sign out, delete account
+  sync/runner.ts               when to sync, sync status for the UI
+  sync/store.ts                sync bookkeeping and saved keys (a separate IndexedDB database)
+  screens/Account.tsx          account screen
+supabase/migrations/           database tables, row-level security and photo bucket for accounts
+.env.example                   the two Supabase settings that turn accounts on
 public/_headers                Cloudflare Pages response headers (isolation, HSTS)
 vite.config.ts                 isolation headers, PWA, stub aliases, scanner file sizes, dev serving of ORT files, LAN HTTPS
 ```
@@ -263,7 +322,24 @@ Building on your computer reuses the models already in `public/models/`. A build
 
 Other hosts work if they can set the headers on every response: Netlify reads the same `_headers` file, and Vercel uses `headers` in `vercel.json`. GitHub Pages can't set headers.
 
-Everything the app loads is served by the app itself, so no other cross-origin setup is needed.
+Everything the app loads is served by the app itself, so no other cross-origin setup is needed. The one exception is Supabase, if accounts are on. Its API answers cross-origin requests itself, and the scanner's isolation headers allow that.
+
+### Accounts and sync (optional)
+
+Without these steps the app deploys and works as before, with no account screens. Accounts use [Supabase](https://supabase.com) for sign-in, the database and photo storage, and its free plan covers personal use. Check [supabase.com/pricing](https://supabase.com/pricing) for the current limits. Free projects pause after a week without use, and you restore them from the dashboard.
+
+1. **Create a project** at [supabase.com](https://supabase.com). The database password it asks for isn't used by the app.
+2. **Create the tables.** Open **SQL Editor**, paste all of [`supabase/migrations/0001_accounts_sync.sql`](supabase/migrations/0001_accounts_sync.sql), and run it.
+   - It creates the `vaults` and `records` tables with row-level security, so each user can only reach their own rows.
+   - It also creates a private `photos` bucket and a `delete_my_account()` function.
+3. **Set where email links go.** In **Authentication → URL Configuration**:
+   - set **Site URL** to your Pages address, e.g. `https://splitsnap.pages.dev`;
+   - under **Redirect URLs**, add `https://splitsnap.pages.dev/**` and `http://localhost:5173/**`.
+4. **Check the email settings.** In **Authentication**:
+   - keep **Confirm email** on;
+   - before anyone else signs up, set up **custom SMTP** under **Emails**. The built-in sender is only meant for testing and sends very few emails per hour.
+5. **Connect the app.** Copy `.env.example` to `.env.local` and fill in two values from **Project Settings → API**: the project URL and the publishable key (the older "anon" key works too). Both are public by design: row-level security, not secrecy, protects the data.
+6. **Deploy:** run `npm run deploy`. The settings are built into the app, and **Settings → Account** appears. For local development, `npm run dev` picks up `.env.local` too.
 
 ## Roadmap
 

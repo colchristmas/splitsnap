@@ -5,10 +5,13 @@ import { router } from './App'
 import { NatureBackdrop } from './components/NatureBackdrop'
 import { ensureCategoryRules } from './db/categories'
 import { ensureSelf } from './db/people'
+import { startSync } from './sync/runner'
 import './index.css'
 
 void ensureSelf()
 void ensureCategoryRules()
+// Only does anything once someone has signed in on this device.
+void startSync()
 
 // `npx vite --host --mode phone`: a QR code for opening the app on a phone.
 // Production builds compile this to null, so the QR code library isn't shipped.

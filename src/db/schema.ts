@@ -13,7 +13,7 @@ export interface CategoryChoice {
   categoryId: string
 }
 
-class SplitSnapDB extends Dexie {
+export class SplitSnapDB extends Dexie {
   people!: EntityTable<Person, 'id'>
   groups!: EntityTable<Group, 'id'>
   receipts!: EntityTable<Receipt, 'id'>
@@ -22,8 +22,9 @@ class SplitSnapDB extends Dexie {
   categories!: EntityTable<Category, 'id'>
   categoryMemory!: EntityTable<CategoryChoice, 'key'>
 
-  constructor() {
-    super('splitsnap')
+  /** Tests pass their own name, e.g. to simulate two devices. */
+  constructor(name = 'splitsnap') {
+    super(name)
     this.version(1).stores({
       people: 'id, lastUsedAt',
       groups: 'id',

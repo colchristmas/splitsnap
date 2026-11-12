@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router'
 import { ActionBar, useReceiptContext } from '../components/layouts'
 import { Banner, Button, Card } from '../components/ui'
 import { useImageUrl } from '../db/hooks'
-import { applyParsed } from '../db/receipts'
+import { applyParsed, replaceReceiptImage } from '../db/receipts'
 import { db } from '../db/schema'
 import { getSetting } from '../db/settings'
 import { recognize, type OcrProgress } from '../lib/ocr/engine'
@@ -23,10 +23,11 @@ export function Scan() {
   const [state, setState] = useState<State>({ kind: 'running' })
   const started = useRef(false)
 
-  const run = async () => {
+  // Rotating gives the photo a new id before `receipt` catches up, so it passes the id in.
+  const run = async (imageId = receipt.imageId) => {
     setState({ kind: 'running' })
     try {
-      const image = receipt.imageId ? await db.images.get(receipt.imageId) : undefined
+      const image = imageId ? await db.images.get(imageId) : undefined
       if (!image) throw new Error('The photo for this receipt is missing.')
       const lines = await recognize(await enhanceForOcr(image.blob), await getSetting('ocrModel'), (progress) =>
         setState({ kind: 'running', progress }),
@@ -51,8 +52,8 @@ export function Scan() {
   const rotate = async (deg: 90 | 270) => {
     const image = receipt.imageId ? await db.images.get(receipt.imageId) : undefined
     if (!image) return
-    await db.images.put({ ...image, blob: await prepareImage(image.blob, deg) })
-    void run()
+    const id = await replaceReceiptImage(receipt.id, await prepareImage(image.blob, deg))
+    if (id) void run(id)
   }
 
   const running = state.kind === 'running'
@@ -120,7 +121,7 @@ function ProgressView({ progress }: { progress?: OcrProgress }) {
           style={fraction === undefined ? undefined : { width: `${Math.round(fraction * 100)}%` }}
         />
       </div>
-      <p className="text-xs text-stone-500">Everything runs on this device. Your receipt never leaves your phone.</p>
+      <p className="text-xs text-stone-500">The scan runs on this device. Your receipt is never sent anywhere to be read.</p>
     </div>
   )
 }

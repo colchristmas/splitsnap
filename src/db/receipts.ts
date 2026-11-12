@@ -64,6 +64,24 @@ export async function applyParsed(id: string, parsed: ParsedReceipt) {
   await recategorize(id)
 }
 
+/**
+ * Swaps a receipt's photo for a new one (e.g. rotated). The new photo gets a
+ * new id rather than overwriting the old one, so sync can treat each photo as
+ * never changing. Returns the new photo's id.
+ */
+export async function replaceReceiptImage(receiptId: string, blob: Blob): Promise<string | undefined> {
+  return db.transaction('rw', db.receipts, db.images, async () => {
+    const r = await db.receipts.get(receiptId)
+    if (!r) return undefined
+    const id = newId()
+    const now = Date.now()
+    await db.images.add({ id, blob, createdAt: now })
+    if (r.imageId) await db.images.delete(r.imageId)
+    await db.receipts.update(receiptId, { imageId: id, updatedAt: now })
+    return id
+  })
+}
+
 export async function deleteReceipt(id: string) {
   await db.transaction('rw', db.receipts, db.images, async () => {
     const r = await db.receipts.get(id)
