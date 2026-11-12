@@ -6,7 +6,7 @@ import { Banner, Button, Card, SectionTitle, Segmented, cx } from '../components
 import { clearAllData, exportBackup, importBackup } from '../db/backup'
 import { ensureSelf } from '../db/people'
 import { setSetting, useSetting } from '../db/settings'
-import { OCR_MODELS, isModelDownloaded, prepareEngine, pruneModels, type OcrModel, type OcrProgress } from '../lib/ocr/engine'
+import { OCR_MODELS, isScannerDownloaded, prepareEngine, pruneModels, type OcrModel, type OcrProgress } from '../lib/ocr/engine'
 
 export function Settings() {
   return (
@@ -30,7 +30,7 @@ function ScannerSettings() {
   const [error, setError] = useState<string>()
 
   useEffect(() => {
-    void isModelDownloaded(model).then(setReady)
+    void isScannerDownloaded(model).then(setReady)
   }, [model])
 
   const download = async () => {

@@ -2,14 +2,84 @@
 
 @theme {
   --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  /*
+   * Color scheme, built from five colors:
+   *   #fefae0 cream   page background, cards, text on dark and copper tiles
+   *   #dda15e tan     primary buttons, active pills and tabs, fills (teal-400)
+   *   #bc6c25 copper  the main call to action, accents, focus rings (teal-600)
+   *   #606c38 olive   "owes you", success, olive tiles (emerald-700)
+   *   #283618 forest  body text, the tab dock, dark tiles (stone-900)
+   * The screens use Tailwind's stone/teal/emerald/amber names, so each scale is
+   * redefined here rather than renamed in every file. Steps between the five
+   * colors keep Tailwind's lightness, so text stays readable (WCAG AA):
+   * small text on copper isn't, so copper only carries large text and icons.
+   */
+  --color-white: #fffef6;
+  --color-stone-50: #fffced;
+  --color-stone-100: #fefae0;
+  --color-stone-200: #eae7d1;
+  --color-stone-300: #d5d4bd;
+  --color-stone-400: #a3a595;
+  --color-stone-500: #717565;
+  --color-stone-600: #595f4e;
+  --color-stone-700: #474d3d;
+  --color-stone-800: #354027;
+  --color-stone-900: #283618;
+  --color-stone-950: #121e04;
+
+  /* Brand: tan and copper. */
+  --color-teal-50: #fff5eb;
+  --color-teal-100: #fee9d3;
+  --color-teal-200: #fed6ad;
+  --color-teal-300: #f4bf86;
+  --color-teal-400: #dda15e;
+  --color-teal-500: #d08437;
+  --color-teal-600: #bc6c25;
+  --color-teal-700: #915116;
+  --color-teal-800: #713f12;
+  --color-teal-900: #583313;
+  --color-teal-950: #331b06;
+
+  /* "Owes you" and success banners share the olive scale. */
+  --color-emerald-50: #f4fae7;
+  --color-emerald-100: #e9f1d4;
+  --color-emerald-200: #d9e4b8;
+  --color-emerald-300: #c0cf95;
+  --color-emerald-400: #a6b771;
+  --color-emerald-500: #8a9b52;
+  --color-emerald-600: #74843b;
+  --color-emerald-700: #606c38;
+  --color-emerald-800: #455423;
+  --color-emerald-900: #33431c;
+  --color-emerald-950: #1e2b0f;
+
+  --color-amber-50: #fff5eb;
+  --color-amber-100: #fee9d3;
+  --color-amber-200: #fed6ad;
+  --color-amber-300: #f4bf86;
+  --color-amber-400: #dda15e;
+  --color-amber-500: #d08437;
+  --color-amber-600: #bc6c25;
+  --color-amber-700: #915116;
+  --color-amber-800: #713f12;
+  --color-amber-900: #583313;
+  --color-amber-950: #331b06;
 }
 
 html {
   -webkit-tap-highlight-color: transparent;
+  /* Checkboxes, radios and sliders. */
+  accent-color: var(--color-teal-700);
 }
 
 body {
   @apply bg-stone-100 text-stone-900 antialiased dark:bg-stone-950 dark:text-stone-100;
+}
+
+::selection {
+  background-color: var(--color-amber-300);
+  color: var(--color-stone-900);
 }
 
 /* iOS zooms into inputs with text smaller than 16px. */
@@ -17,4 +87,19 @@ input,
 select,
 textarea {
   font-size: 16px;
+}
+
+/* A soft, warm shadow for cards and tiles, like light through leaves. */
+@utility shadow-warm {
+  box-shadow:
+    0 14px 30px -18px rgb(188 108 37 / 0.55),
+    0 2px 6px -3px rgb(40 54 24 / 0.12);
+}
+
+/* Organic, pebble-like corners: never quite the same on every side. */
+@utility rounded-pebble {
+  border-radius: 2rem 2rem 2rem 1.25rem;
+}
+@utility rounded-blob {
+  border-radius: 42% 58% 55% 45% / 48% 44% 56% 52%;
 }

@@ -14,7 +14,8 @@ const models = (process.env.OCR_MODELS ??
   'PP-OCRv6_small_det,PP-OCRv6_small_rec,PP-OCRv6_tiny_det,PP-OCRv6_tiny_rec').split(',')
 
 // The OCR worker bundles onnxruntime-web 1.24.3 and loads the JSEP build,
-// which covers both WebGPU and WASM.
+// which covers both WebGPU and WASM. Keep in sync with ORT_FILES in
+// src/lib/ocr/engine.ts.
 const ortFiles = ['ort-wasm-simd-threaded.jsep.mjs', 'ort-wasm-simd-threaded.jsep.wasm']
 
 async function exists(path) {

@@ -2,12 +2,15 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Camera, ChevronRight, ClipboardPaste, ImageUp, PencilLine } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { ReceiptRow } from '../components/ReceiptRow'
-import { Banner, Button, Card, SectionTitle } from '../components/ui'
+import { AnimatedCents } from '../components/AnimatedCents'
+import { Wave } from '../components/layouts'
+import { ReceiptTile } from '../components/ReceiptTile'
+import { Banner, SectionTitle, Tile } from '../components/ui'
 import { useBalances } from '../db/balances'
 import { createReceipt } from '../db/receipts'
 import { db } from '../db/schema'
-import { formatCents } from '../lib/money'
+import { getSetting } from '../db/settings'
+import { prepareEngine } from '../lib/ocr/engine'
 import { prepareImage } from '../lib/ocr/preprocess'
 
 export function Home() {
@@ -16,10 +19,14 @@ export function Home() {
   const upload = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string>()
-  const recent = useLiveQuery(() => db.receipts.orderBy('updatedAt').reverse().limit(5).toArray(), []) ?? []
+  const recent = useLiveQuery(() => db.receipts.orderBy('updatedAt').reverse().limit(4).toArray(), []) ?? []
   const open = [...useBalances().byPerson.values()].map((b) => b.openCents)
   const owedToMe = open.filter((c) => c > 0).reduce((a, c) => a + c, 0)
   const iOwe = -open.filter((c) => c < 0).reduce((a, c) => a + c, 0)
+
+  // Starts downloading the scanner while the camera or photo picker is open.
+  // Scan shows the same download, and retries if this one fails.
+  const warmUpScanner = () => void getSetting('ocrModel').then((m) => prepareEngine(m)).catch(() => {})
 
   const onImage = async (image: Blob | undefined) => {
     if (!image || busy) return
@@ -69,79 +76,94 @@ export function Home() {
 
   return (
     <>
-      <header className="mb-5">
-        <h1 className="text-3xl font-bold tracking-tight">SplitSnap</h1>
-        <p className="text-stone-500">Snap a receipt, tap who had what.</p>
+      <header className="mb-6">
+        <h1 className="text-4xl font-bold tracking-tight">SplitSnap</h1>
+        <Wave className="mt-1 h-3 w-20 text-teal-600" />
+        <p className="mt-2 text-stone-500">Snap a receipt, tap who had what.</p>
       </header>
 
-      <Card className="grid gap-3">
-        <Button variant="primary" size="lg" disabled={busy} onClick={() => camera.current?.click()}>
-          <Camera size={22} /> Take a photo
-        </Button>
-        <Button size="lg" disabled={busy} onClick={() => upload.current?.click()}>
-          <ImageUp size={22} /> Upload a photo
-        </Button>
+      <div className="grid grid-cols-2 gap-3">
+        <Tile tone="copper" square={false} className="col-span-2 min-h-44" disabled={busy} onClick={() => (warmUpScanner(), camera.current?.click())}>
+          <Camera size={36} strokeWidth={1.75} />
+          <span className="text-3xl font-bold tracking-tight">Take a photo</span>
+        </Tile>
+        <Tile tone="olive" disabled={busy} onClick={() => (warmUpScanner(), upload.current?.click())}>
+          <ImageUp size={30} strokeWidth={1.75} />
+          <span className="text-xl leading-tight font-semibold">Upload a photo</span>
+        </Tile>
         {canReadClipboard && (
-          <Button size="lg" disabled={busy} onClick={() => void pasteFromClipboard()}>
-            <ClipboardPaste size={22} /> Paste a screenshot
-          </Button>
+          <Tile tone="tan" disabled={busy} onClick={() => void pasteFromClipboard()}>
+            <ClipboardPaste size={30} strokeWidth={1.75} />
+            <span className="text-xl leading-tight font-semibold">Paste a screenshot</span>
+          </Tile>
         )}
-        <Button variant="ghost" disabled={busy} onClick={() => void manual()}>
-          <PencilLine size={18} /> Enter items by hand
-        </Button>
-        {hasKeyboard && (
-          <p className="text-center text-sm text-stone-500">Tip: press {pasteKeys} here to paste a copied screenshot.</p>
-        )}
-        {error && <Banner tone="warn">{error}</Banner>}
-        <input
-          ref={camera}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          hidden
-          onChange={(e) => void onImage(e.target.files?.[0]).finally(() => (e.target.value = ''))}
-        />
-        <input
-          ref={upload}
-          type="file"
-          accept="image/*"
-          hidden
-          onChange={(e) => void onImage(e.target.files?.[0]).finally(() => (e.target.value = ''))}
-        />
-      </Card>
-
-      {(owedToMe > 0 || iOwe > 0) && (
-        <Link to="/people" className="mt-3 block">
-          <Card className="flex items-center gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm text-stone-500">Balances</p>
-              <p className="font-semibold">
-                {owedToMe > 0 && `You're owed ${formatCents(owedToMe)}`}
-                {owedToMe > 0 && iOwe > 0 && ' · '}
-                {iOwe > 0 && `You owe ${formatCents(iOwe)}`}
-              </p>
+        <Tile tone="cream" disabled={busy} onClick={() => void manual()}>
+          <PencilLine size={30} strokeWidth={1.75} className="text-teal-600" />
+          <span className="text-xl leading-tight font-semibold">Enter items by hand</span>
+        </Tile>
+        {(owedToMe > 0 || iOwe > 0) && (
+          <Tile tone="forest" to="/people">
+            <span className="flex items-center justify-between text-sm text-stone-300">
+              Balances <ChevronRight size={18} />
+            </span>
+            <div className="grid gap-1.5">
+              {owedToMe > 0 && (
+                <p>
+                  <span className="block text-xs text-stone-300">You're owed</span>
+                  <AnimatedCents cents={owedToMe} className="text-xl font-bold" />
+                </p>
+              )}
+              {iOwe > 0 && (
+                <p>
+                  <span className="block text-xs text-stone-300">You owe</span>
+                  <AnimatedCents cents={iOwe} className="text-xl font-bold text-teal-300" />
+                </p>
+              )}
             </div>
-            <ChevronRight size={18} className="text-stone-400" />
-          </Card>
-        </Link>
+          </Tile>
+        )}
+      </div>
+
+      {hasKeyboard && (
+        <p className="mt-3 text-center text-sm text-stone-500">Tip: press {pasteKeys} here to paste a copied screenshot.</p>
       )}
+      {error && (
+        <div className="mt-3">
+          <Banner tone="warn">{error}</Banner>
+        </div>
+      )}
+      <input
+        ref={camera}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        hidden
+        onChange={(e) => void onImage(e.target.files?.[0]).finally(() => (e.target.value = ''))}
+      />
+      <input
+        ref={upload}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => void onImage(e.target.files?.[0]).finally(() => (e.target.value = ''))}
+      />
 
       {recent.length > 0 && (
         <>
           <SectionTitle
             action={
-              <Link to="/history" className="text-sm font-medium text-teal-700 dark:text-teal-400">
+              <Link to="/history" className="text-sm font-medium text-teal-700 dark:text-teal-300">
                 See all
               </Link>
             }
           >
             Recent
           </SectionTitle>
-          <Card className="divide-y divide-stone-100 p-0! dark:divide-stone-800">
-            {recent.map((r) => (
-              <ReceiptRow key={r.id} receipt={r} />
+          <div data-stagger className="grid grid-cols-2 gap-3">
+            {recent.map((r, i) => (
+              <ReceiptTile key={r.id} receipt={r} index={i} />
             ))}
-          </Card>
+          </div>
         </>
       )}
     </>

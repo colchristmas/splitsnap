@@ -1,13 +1,14 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
-import { BarList, type BarRow } from '../components/BarList'
+import { FillTiles, type FillRow } from '../components/FillTiles'
 import { PageTitle } from '../components/layouts'
-import { Card, Empty, PersonChip, SectionTitle, Segmented, cx } from '../components/ui'
+import { Empty, PersonChip, SectionTitle, Segmented, Tile, cx } from '../components/ui'
 import { useCategoriesById } from '../db/categories'
 import { usePeopleById } from '../db/hooks'
 import { db } from '../db/schema'
 import { CHARGES_ROW, inPeriod, spending, type Period, type SpendingRow } from '../lib/spending'
+import { AnimatedCents } from '../components/AnimatedCents'
 
 type Range = Period['kind']
 
@@ -42,7 +43,7 @@ export function Spending() {
         ? String(period.year)
         : new Date(period.year, period.month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 
-  const toBars = (rows: SpendingRow[]): BarRow[] =>
+  const toTiles = (rows: SpendingRow[]): FillRow[] =>
     rows.map((r) => ({
       key: r.id ?? 'none',
       name: r.id === CHARGES_ROW ? 'Tax, tip & fees' : r.id ? (categories.get(r.id)?.name ?? 'Uncategorized') : 'Uncategorized',
@@ -85,7 +86,7 @@ export function Spending() {
             aria-pressed={!personId}
             className={cx(
               'shrink-0 rounded-full px-3 py-1 text-sm font-medium ring-1',
-              !personId ? 'bg-teal-700 text-white ring-transparent' : 'bg-white ring-stone-300 dark:bg-stone-900 dark:ring-stone-700',
+              !personId ? 'bg-teal-400 font-semibold text-stone-900 ring-transparent' : 'bg-white ring-teal-200 dark:bg-stone-900 dark:ring-stone-700',
             )}
           >
             Everyone
@@ -96,29 +97,27 @@ export function Spending() {
         </div>
       )}
 
-      <Card className="mt-3">
-        <p className="text-sm text-stone-500">
+      <Tile tone="forest" square={false} className="mt-3 min-h-40">
+        <p className="text-sm text-stone-300">
           {periodLabel}
           {personName && ` · ${personName}'s share`}
         </p>
-        <p className="text-5xl font-bold tracking-tight">{formatTotal(data.totalCents)}</p>
-        <p className="mt-1 text-sm text-stone-500">
-          {data.receiptCount} {data.receiptCount === 1 ? 'receipt' : 'receipts'}
-        </p>
-      </Card>
+        <div>
+          <AnimatedCents cents={data.totalCents} format={formatTotal} className="block text-5xl font-bold tracking-tight" />
+          <p className="mt-1 text-sm text-teal-300">
+            {data.receiptCount} {data.receiptCount === 1 ? 'receipt' : 'receipts'}
+          </p>
+        </div>
+      </Tile>
 
       {data.receiptCount === 0 ? (
         <Empty>No saved receipts here yet. Receipts count once you tap Save on the split.</Empty>
       ) : (
         <>
           <SectionTitle>By receipt type</SectionTitle>
-          <Card>
-            <BarList rows={toBars(data.byReceiptCategory)} totalCents={data.totalCents} label="Spending by receipt type" />
-          </Card>
+          <FillTiles rows={toTiles(data.byReceiptCategory)} totalCents={data.totalCents} label="Spending by receipt type" />
           <SectionTitle>By item type</SectionTitle>
-          <Card>
-            <BarList rows={toBars(data.byItemCategory)} totalCents={data.totalCents} label="Spending by item type" />
-          </Card>
+          <FillTiles rows={toTiles(data.byItemCategory)} totalCents={data.totalCents} label="Spending by item type" />
         </>
       )}
     </>
