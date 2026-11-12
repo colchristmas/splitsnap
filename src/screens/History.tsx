@@ -2,13 +2,15 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Layers, Search, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
+import { ItemResults } from '../components/ItemResults'
 import { PageTitle } from '../components/layouts'
 import { ReceiptTile } from '../components/ReceiptTile'
-import { Button, Empty, cx } from '../components/ui'
+import { Button, Empty, SectionTitle, cx } from '../components/ui'
 import { useCategories } from '../db/categories'
 import { usePeopleById } from '../db/hooks'
 import { deleteReceipt } from '../db/receipts'
 import { db } from '../db/schema'
+import { isSearching, matchesReceipt, parseSearch, searchItems, type SearchNames } from '../lib/search'
 
 export function History() {
   const [query, setQuery] = useState('')
@@ -25,23 +27,23 @@ export function History() {
     })
   const byId = usePeopleById()
   const categories = useCategories()
-  const categoryName = (id: string | undefined) => categories.find((c) => c.id === id)?.name.toLowerCase() ?? ''
+  const names: SearchNames = {
+    person: (id) => byId.get(id)?.name,
+    category: (id) => categories.find((c) => c.id === id)?.name,
+  }
   const receipts =
     useLiveQuery(() => db.receipts.orderBy('date').reverse().toArray(), [])?.sort(
       (a, b) => b.date.localeCompare(a.date) || b.updatedAt - a.updatedAt,
     ) ?? []
 
-  const q = query.trim().toLowerCase()
+  // Words match stores, people, items and categories; a price matches item
+  // prices (in the Items list) and bill totals (in the tiles). See lib/search.ts.
+  const search = parseSearch(query)
+  const searching = isSearching(search)
   const inCategory = categoryId ? receipts.filter((r) => r.categoryId === categoryId) : receipts
-  const shown = q
-    ? inCategory.filter(
-        (r) =>
-          r.store.toLowerCase().includes(q) ||
-          categoryName(r.categoryId).includes(q) ||
-          r.participantIds.some((id) => byId.get(id)?.name.toLowerCase().includes(q)) ||
-          r.items.some((i) => i.name.toLowerCase().includes(q) || categoryName(i.categoryId).includes(q)),
-      )
-    : inCategory
+  const shown = searching ? inCategory.filter((r) => matchesReceipt(r, search, names)) : inCategory
+  // Hidden while picking bills to combine, where a tap should select, not open.
+  const items = searching && !selected ? searchItems(inCategory, search, names) : []
   // Only offer filters for categories that some receipt actually uses.
   const used = categories.filter((c) => c.kind === 'receipt' && receipts.some((r) => r.categoryId === c.id))
 
@@ -70,7 +72,7 @@ export function History() {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search stores, people, items, categories"
+          placeholder="Search items, prices, stores, people"
           className="w-full bg-transparent outline-none"
         />
       </label>
@@ -96,8 +98,11 @@ export function History() {
         </div>
       )}
 
+      {items.length > 0 && <ItemResults matches={items} search={query} />}
+      {items.length > 0 && shown.length > 0 && <SectionTitle>Receipts</SectionTitle>}
+
       {shown.length === 0 ? (
-        <Empty>{receipts.length === 0 ? 'No receipts yet.' : 'Nothing matches.'}</Empty>
+        items.length === 0 && <Empty>{receipts.length === 0 ? 'No receipts yet.' : 'Nothing matches.'}</Empty>
       ) : (
         <div data-stagger className="grid grid-cols-2 gap-3">
           {shown.map((r, i) => (

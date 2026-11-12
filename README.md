@@ -118,6 +118,7 @@ No receipt handy? **Enter items by hand** on the Home screen works the same way.
   - You can edit both lists in **Settings → Categories**.
 - **Spending.** Totals by receipt type and item type for a month, a year or all time, for everyone or for one person's share.
 - **History and backup.** Searchable history with photos and category filters, plus JSON backup export/import (merge or replace).
+- **Item and price search.** History's search box also lists matching items with their price, store and date, and the lowest–highest price, so you can compare stores. Type words (`milk`, `costco milk`), a price (`4.99`; `4` finds $4.00–$4.99), a range (`5-10`, `$5 to $10`), a limit (`under 5`, `>20`), or a mix (`milk under 5`). A price filters items by their price and bills by their total.
 - **Exact to the penny.** Integer cents and largest-remainder rounding mean shares always add up to the total.
 
 ## How it works
@@ -169,6 +170,14 @@ At restaurants, food defaults to Meals unless it's clearly a drink or dessert. C
 
 `src/lib/spending.ts` totals saved receipts by receipt type and item type, using the split engine for each person's share.
 
+### Search
+
+`src/lib/search.ts` splits what you type into words and at most one price:
+
+- **Words** must all match. For bills they can match the store, the category, a person, or an item. For items they must match the item's name or category, or narrow it by store: `costco milk` finds milk bought at Costco, while `costco` alone lists only bills.
+- **A price** is a range, a limit, or an amount that prices start with. A bare number counts as a price only when it's the whole search, so `coke 12` and `milk 4` stay words; write `milk $4` to mean a price.
+- An item matches a price through its printed price, its price after coupons, or its price per unit (`3 × $2.00` matches `2`).
+
 ### Balances
 
 `src/lib/balances.ts` turns each saved bill into shares between you and each person:
@@ -207,6 +216,7 @@ src/
   lib/split.ts                 split engine (+ tests)
   lib/categories.ts            starter categories, keyword rules, guessing and learning (+ tests)
   lib/spending.ts              spending totals by category and person (+ tests)
+  lib/search.ts                History search: words, prices, ranges (+ tests)
   lib/balances.ts              balances with each person, combining bills (+ tests)
   lib/share.ts                 share text, Web Share / clipboard (+ tests)
   lib/receipt/parse.ts         OCR boxes → items/charges (+ tests and real OCR fixtures)
@@ -257,20 +267,7 @@ Everything the app loads is served by the app itself, so no other cross-origin s
 
 ## Roadmap
 
-- [x] OCR spike: model choice, worker and threading setup, isolation headers
-- [x] Split engine, receipt parser and share text, with tests
-- [x] Storage: people, groups, receipts, photos, settings
-- [x] Screens: Home, Scan, Items, Assign, Split, History, Spending, People, Settings
-- [x] Paste screenshots
-- [x] Receipt and item categories with learning, spending totals
-- [x] Running balances, activity per person, combine bills, mark settled
-- [x] JSON backup export/import, storage persistence
-- [x] Installable PWA (the app shell works offline)
-- [ ] Fix scanning while offline
-- [ ] Test with real receipt photos on iPhone Safari and tune the parser
-- [ ] Deploy
-
-Not planned for now: real payments (settling only records that you were paid back), multiple users or sync, cloud OCR, currencies other than USD.
+See [ROADMAP.md](ROADMAP.md) for what's done, what's next, and what isn't planned.
 
 ## License
 
