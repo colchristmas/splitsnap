@@ -267,21 +267,7 @@ Everything the app loads is served by the app itself, so no other cross-origin s
 
 ## Roadmap
 
-- [x] OCR spike: model choice, worker and threading setup, isolation headers
-- [x] Split engine, receipt parser and share text, with tests
-- [x] Storage: people, groups, receipts, photos, settings
-- [x] Screens: Home, Scan, Items, Assign, Split, History, Spending, People, Settings
-- [x] Paste screenshots
-- [x] Receipt and item categories with learning, spending totals
-- [x] Running balances, activity per person, combine bills, mark settled
-- [x] JSON backup export/import, storage persistence
-- [x] Installable PWA (the app shell works offline)
-- [x] Item and price search in History
-- [ ] Fix scanning while offline
-- [ ] Test with real receipt photos on iPhone Safari and tune the parser
-- [ ] Deploy
-
-Not planned for now: real payments (settling only records that you were paid back), multiple users or sync, cloud OCR, currencies other than USD.
+See [ROADMAP.md](ROADMAP.md) for what's done, what's next, and what isn't planned.
 
 ## License
 
